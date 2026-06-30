@@ -3,45 +3,37 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Matt — Personal Site</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; }
-    @keyframes cuef { 0%,100%{transform:translateY(0);opacity:.45;}50%{transform:translateY(7px);opacity:1;} }
-    @keyframes bobx { 0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);} }
-    #hero-figure { animation: bobx 4s ease-in-out infinite; }
-    #scroll-arrow { display:inline-block; animation: cuef 1.7s ease-in-out infinite; }
-  </style>
+  <title>Matt Cross</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div style="min-height:100vh;background:#f1ebdd;color:#2b2b2b;font-family:'EB Garamond',Georgia,serif;position:relative;">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<div class="grain" aria-hidden="true"></div>
 
-  <!-- Grain overlay -->
-  <div style="position:fixed;inset:0;pointer-events:none;z-index:60;opacity:.06;mix-blend-mode:multiply;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;);"></div>
-
-  <!-- Fixed left nav -->
-  <div style="position:fixed;left:24px;top:50%;transform:translateY(-50%);z-index:40;display:flex;gap:16px;align-items:flex-start;">
-    <div style="position:relative;width:2px;height:180px;background:rgba(43,43,43,.16);">
-      <div id="nav-dot" style="position:absolute;left:-3px;top:0;width:8px;height:8px;border-radius:50%;transition:transform .3s ease,background .3s ease;background:#6f8f5e;transform:translateY(9px);"></div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:24px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;color:rgba(43,43,43,.5);line-height:1.15;">
-      <span>01<br>soccer</span>
-      <span>02<br>volley</span>
-      <span>03<br>hoops</span>
-      <span>04<br>guitar</span>
-    </div>
+<nav class="nav" aria-label="Section navigation">
+  <div class="nav__track" aria-hidden="true">
+    <div id="nav-dot" class="nav__dot"></div>
   </div>
+  <div class="nav__labels" aria-hidden="true">
+    <span>01<br>soccer</span>
+    <span>02<br>volley</span>
+    <span>03<br>hoops</span>
+    <span>04<br>guitar</span>
+  </div>
+</nav>
 
-  <!-- Hero -->
-  <section style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:48px 24px;position:relative;">
-    <div style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:rgba(43,43,43,.5);margin-bottom:6px;">a personal site · 2026</div>
-    <svg width="64" height="18" viewBox="0 0 64 18" fill="none" stroke="#2b2b2b" stroke-width="2" stroke-linecap="round" style="opacity:.45;margin:10px 0;"><path d="M3 9 Q10 1 17 9 T31 9 T45 9 T59 9"></path></svg>
-    <h1 style="font-family:'EB Garamond',serif;font-weight:500;font-size:clamp(46px,8.5vw,108px);line-height:.98;margin:6px 0;">Hi, I'm <span style="font-style:italic;">Matt</span><span style="opacity:.35;">…</span></h1>
-    <p style="font-size:clamp(17px,2.4vw,22px);max-width:500px;color:rgba(43,43,43,.68);margin:14px auto 0;font-style:italic;">[ one honest line about who you are — placeholder ]</p>
-    <svg id="hero-figure" viewBox="0 0 300 360" style="width:188px;height:auto;margin-top:30px;">
+<main id="main-content">
+
+  <section class="hero" aria-label="Introduction">
+    <p class="hero__eyebrow">a personal site · 2026</p>
+    <svg width="64" height="18" viewBox="0 0 64 18" fill="none" stroke="#2b2b2b"
+         stroke-width="2" stroke-linecap="round" style="opacity:.45;margin:10px 0" aria-hidden="true">
+      <path d="M3 9 Q10 1 17 9 T31 9 T45 9 T59 9"/>
+    </svg>
+    <h1 class="hero__h1">Hi, I'm <em>Matt</em><span style="opacity:.35">…</span></h1>
+    <p class="hero__sub">[ one honest line about who you are ]</p>
+    <svg class="hero__figure" viewBox="0 0 300 360" aria-label="Waving stick figure" role="img">
       <defs>
         <filter id="r-hero">
           <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="3" result="n"/>
@@ -57,345 +49,107 @@
         <line x1="150" y1="140" x2="108" y2="198"/>
         <g>
           <line x1="150" y1="140" x2="198" y2="96"/>
-          <animateTransform attributeName="transform" type="rotate" values="-9 150 140; 15 150 140; -9 150 140" dur="2.6s" repeatCount="indefinite"/>
+          <animateTransform attributeName="transform" type="rotate"
+            values="-9 150 140;15 150 140;-9 150 140" dur="2.6s" repeatCount="indefinite"/>
         </g>
         <line x1="150" y1="236" x2="120" y2="340"/>
         <line x1="150" y1="236" x2="180" y2="340"/>
       </g>
     </svg>
-    <div style="position:absolute;bottom:28px;left:50%;transform:translateX(-50%);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.22em;color:rgba(43,43,43,.5);display:flex;flex-direction:column;align-items:center;gap:4px;">
-      scroll<span id="scroll-arrow">↓</span>
+    <div class="hero__scroll-cue" aria-hidden="true">
+      scroll<span class="hero__scroll-arrow">↓</span>
     </div>
   </section>
 
-  <!-- Soccer -->
-  <section id="sec-soccer" style="height:200vh;position:relative;">
-    <div style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 24px;">
-      <div style="width:100%;max-width:1000px;text-align:center;">
-        <div style="display:flex;align-items:baseline;gap:14px;justify-content:center;">
-          <span style="font-family:'Space Mono',monospace;font-size:clamp(18px,3vw,28px);color:#6f8f5e;">01</span>
-          <h2 style="font-family:'EB Garamond',serif;font-weight:500;font-size:clamp(40px,7vw,88px);letter-spacing:-.01em;margin:0;">Soccer</h2>
+  <section id="sec-soccer" class="section" aria-label="Soccer">
+    <div class="section__sticky">
+      <div class="section__inner">
+        <div class="section__header">
+          <span class="section__num" style="color:var(--soccer)">01</span>
+          <h2 class="section__title">Soccer</h2>
         </div>
-        <p style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.12em;color:rgba(43,43,43,.5);margin:8px 0 4px;">[ placeholder — a line about what the pitch means to you ]</p>
-        <div id="scene-soccer"></div>
+        <p class="section__caption">[ a line about what the pitch means to you ]</p>
+        <svg id="scene-soccer" class="section__scene" viewBox="0 0 1000 600"
+             aria-label="Soccer: stick figure winds up and kicks ball into goal" role="img">
+          <!-- SVG markup added in Task 3 -->
+        </svg>
       </div>
     </div>
   </section>
 
-  <!-- Volleyball -->
-  <section id="sec-volley" style="height:200vh;position:relative;">
-    <div style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 24px;">
-      <div style="width:100%;max-width:1000px;text-align:center;">
-        <div style="display:flex;align-items:baseline;gap:14px;justify-content:center;">
-          <span style="font-family:'Space Mono',monospace;font-size:clamp(18px,3vw,28px);color:#4f8a91;">02</span>
-          <h2 style="font-family:'EB Garamond',serif;font-weight:500;font-size:clamp(40px,7vw,88px);letter-spacing:-.01em;margin:0;">Volleyball</h2>
+  <section id="sec-volley" class="section" aria-label="Volleyball">
+    <div class="section__sticky">
+      <div class="section__inner">
+        <div class="section__header">
+          <span class="section__num" style="color:var(--volley)">02</span>
+          <h2 class="section__title">Volleyball</h2>
         </div>
-        <p style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.12em;color:rgba(43,43,43,.5);margin:8px 0 4px;">[ placeholder — sand, the net, the line you love ]</p>
-        <div id="scene-volley"></div>
+        <p class="section__caption">[ sand, the net, the line you love ]</p>
+        <svg id="scene-volley" class="section__scene" viewBox="0 0 1000 600"
+             aria-label="Volleyball: stick figure crouches, jumps, and spikes" role="img">
+          <!-- SVG markup added in Task 4 -->
+        </svg>
       </div>
     </div>
   </section>
 
-  <!-- Basketball -->
-  <section id="sec-basket" style="height:200vh;position:relative;">
-    <div style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 24px;">
-      <div style="width:100%;max-width:1000px;text-align:center;">
-        <div style="display:flex;align-items:baseline;gap:14px;justify-content:center;">
-          <span style="font-family:'Space Mono',monospace;font-size:clamp(18px,3vw,28px);color:#cf8542;">03</span>
-          <h2 style="font-family:'EB Garamond',serif;font-weight:500;font-size:clamp(40px,7vw,88px);letter-spacing:-.01em;margin:0;">Basketball</h2>
+  <section id="sec-basket" class="section" aria-label="Basketball">
+    <div class="section__sticky">
+      <div class="section__inner">
+        <div class="section__header">
+          <span class="section__num" style="color:var(--basket)">03</span>
+          <h2 class="section__title">Basketball</h2>
         </div>
-        <p style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.12em;color:rgba(43,43,43,.5);margin:8px 0 4px;">[ placeholder — the rhythm of the dribble ]</p>
-        <div id="scene-basket"></div>
+        <p class="section__caption">[ the rhythm of the dribble ]</p>
+        <svg id="scene-basket" class="section__scene" viewBox="0 0 1000 600"
+             aria-label="Basketball: stick figure dribbles three times" role="img">
+          <!-- SVG markup added in Task 5 -->
+        </svg>
       </div>
     </div>
   </section>
 
-  <!-- Guitar -->
-  <section id="sec-guitar" style="height:200vh;position:relative;">
-    <div style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 24px;">
-      <div style="width:100%;max-width:1000px;text-align:center;">
-        <div style="display:flex;align-items:baseline;gap:14px;justify-content:center;">
-          <span style="font-family:'Space Mono',monospace;font-size:clamp(18px,3vw,28px);color:#7d5f86;">04</span>
-          <h2 style="font-family:'EB Garamond',serif;font-weight:500;font-size:clamp(40px,7vw,88px);letter-spacing:-.01em;margin:0;">Guitar</h2>
+  <section id="sec-guitar" class="section" aria-label="Guitar">
+    <div class="section__sticky">
+      <div class="section__inner">
+        <div class="section__header">
+          <span class="section__num" style="color:var(--guitar)">04</span>
+          <h2 class="section__title">Guitar</h2>
         </div>
-        <p style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.12em;color:rgba(43,43,43,.5);margin:8px 0 4px;">[ placeholder — what you play when no one's around ]</p>
-        <div id="scene-guitar"></div>
+        <p class="section__caption">[ what you play when no one's around ]</p>
+        <svg id="scene-guitar" class="section__scene" viewBox="0 0 1000 600"
+             aria-label="Guitar: stick figure strums while notes float upward" role="img">
+          <!-- SVG markup added in Task 6 -->
+        </svg>
       </div>
     </div>
   </section>
 
-  <!-- Footer -->
-  <footer style="min-height:72vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:64px 24px;text-align:center;">
-    <div style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:rgba(43,43,43,.5);">say hello</div>
-    <a href="mailto:you@email.com" style="font-family:'EB Garamond',serif;font-style:italic;font-size:clamp(30px,5.4vw,60px);color:#2b2b2b;text-decoration:none;border-bottom:2px solid rgba(43,43,43,.28);padding-bottom:3px;">you@email.com</a>
-    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;color:rgba(43,43,43,.4);margin-top:18px;">drawn by hand · placeholder footer</div>
+  <section class="projects" aria-label="Selected work">
+    <p class="projects__eyebrow">selected work</p>
+    <div class="projects__grid">
+      <!-- Project cards added in Task 7 -->
+    </div>
+  </section>
+
+  <footer class="footer" aria-label="Contact">
+    <p class="footer__eyebrow">say hello</p>
+    <a class="footer__email" href="mailto:matthewcross2003@gmail.com">matthewcross2003@gmail.com</a>
+    <div class="footer__links">
+      <a href="https://github.com/" target="_blank" rel="noopener">github</a>
+      <a href="#" target="_blank" rel="noopener">linkedin</a>
+    </div>
+    <p class="footer__tagline">drawn by hand · 2026</p>
   </footer>
 
-</div>
+</main>
 
-<script>
-const INK = '#2b2b2b';
-const ROUGH = 2.6;
-const LW = 3.4;
-const ACCENTS = { soccer: '#6f8f5e', volley: '#4f8a91', basket: '#cf8542', guitar: '#7d5f86' };
-const KEYS = ['soccer', 'volley', 'basket', 'guitar'];
-const DOT_COLORS = [ACCENTS.soccer, ACCENTS.volley, ACCENTS.basket, ACCENTS.guitar];
-
-function lerp(a, b, t) { return a + (b - a) * t; }
-function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
-
-function svgShell(id, inner) {
-  return `<svg viewBox="0 0 1000 600" style="width:100%;height:auto;max-height:56vh;display:block;margin:18px auto 0;">
-    <defs>
-      <filter id="${id}">
-        <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="7" result="n"/>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="${ROUGH}"/>
-      </filter>
-    </defs>
-    ${inner}
-  </svg>`;
-}
-
-function scribble(id, accent) {
-  return `<g filter="url(#${id})" stroke="${accent}" stroke-width="3" fill="none" opacity="0.45" stroke-linecap="round">
-    <ellipse cx="500" cy="330" rx="330" ry="200" transform="rotate(-4 500 330)"/>
-    <ellipse cx="500" cy="330" rx="312" ry="184" transform="rotate(5 500 330)" opacity="0.6"/>
-  </g>`;
-}
-
-function ground(accent) {
-  return `<line x1="80" y1="462" x2="920" y2="462" stroke="${accent}" stroke-width="2.4" opacity="0.5" stroke-linecap="round"/>`;
-}
-
-function drawSoccer(p, accent) {
-  let fx, fy;
-  if (p <= 0.35) {
-    const t = p / 0.35;
-    fx = lerp(488, 424, t); fy = lerp(460, 438, t);
-  } else if (p <= 0.5) {
-    const t = (p - 0.35) / 0.15;
-    fx = lerp(424, 538, t); fy = lerp(438, 400, t);
-  } else {
-    const t = (p - 0.5) / 0.5;
-    fx = lerp(538, 552, t); fy = lerp(400, 452, t);
-  }
-
-  const cp = 0.46;
-  let bx, by;
-  if (p < cp) {
-    bx = 502; by = 448;
-  } else {
-    const t = (p - cp) / (1 - cp);
-    bx = lerp(508, 815, t);
-    by = lerp(448, 388, t) - 150 * Math.sin(Math.PI * t);
-  }
-
-  return svgShell('r-soccer', `
-    ${scribble('r-soccer', accent)}
-    <g filter="url(#r-soccer)">
-      ${ground(accent)}
-      <g stroke="${INK}" stroke-width="2.6" fill="none" opacity="0.78" stroke-linecap="round">
-        <line x1="735" y1="300" x2="905" y2="300"/>
-        <line x1="735" y1="300" x2="735" y2="462"/>
-        <line x1="905" y1="300" x2="905" y2="462"/>
-        <line x1="768" y1="300" x2="768" y2="462" opacity="0.38"/>
-        <line x1="805" y1="300" x2="805" y2="462" opacity="0.38"/>
-        <line x1="842" y1="300" x2="842" y2="462" opacity="0.38"/>
-        <line x1="879" y1="300" x2="879" y2="462" opacity="0.38"/>
-        <line x1="735" y1="342" x2="905" y2="342" opacity="0.38"/>
-        <line x1="735" y1="388" x2="905" y2="388" opacity="0.38"/>
-        <line x1="735" y1="432" x2="905" y2="432" opacity="0.38"/>
-      </g>
-      <g stroke="${INK}" stroke-width="${LW}" stroke-linecap="round" fill="none">
-        <circle cx="460" cy="165" r="30"/>
-        <line x1="460" y1="195" x2="460" y2="320"/>
-        <line x1="460" y1="208" x2="414" y2="262"/>
-        <line x1="460" y1="208" x2="506" y2="255"/>
-        <line x1="460" y1="320" x2="440" y2="460"/>
-        <line x1="460" y1="320" x2="${fx}" y2="${fy}"/>
-      </g>
-      <g transform="translate(${bx} ${by})">
-        <circle cx="0" cy="0" r="15" fill="#f1ebdd" stroke="${INK}" stroke-width="3"/>
-        <line x1="-9" y1="-3" x2="0" y2="6" stroke="${INK}" stroke-width="2"/>
-        <line x1="9" y1="-3" x2="0" y2="6" stroke="${INK}" stroke-width="2"/>
-        <line x1="0" y1="6" x2="0" y2="14" stroke="${INK}" stroke-width="2"/>
-      </g>
-    </g>`);
-}
-
-function drawVolley(p, accent) {
-  const jy = -66 * Math.sin(Math.PI * clamp((p - 0.05) / 0.8, 0, 1));
-
-  let hx, hy;
-  if (p <= 0.4) {
-    const t = p / 0.4;
-    hx = lerp(348, 352, t); hy = lerp(96, 90, t);
-  } else if (p <= 0.52) {
-    const t = (p - 0.4) / 0.12;
-    hx = lerp(352, 360, t); hy = lerp(90, 178, t);
-  } else {
-    const t = (p - 0.52) / 0.48;
-    hx = lerp(360, 372, t); hy = lerp(178, 300, t);
-  }
-
-  const cp = 0.47;
-  const ballInGroup = p < cp;
-  let bx, by;
-  if (ballInGroup) {
-    bx = 350; by = 92;
-  } else {
-    const t = (p - cp) / (1 - cp);
-    bx = lerp(356, 808, t);
-    by = lerp(116, 440, t) - 50 * Math.sin(Math.PI * t);
-  }
-
-  const ball = `<g transform="translate(${bx} ${by})">
-    <circle cx="0" cy="0" r="14" fill="#f1ebdd" stroke="${INK}" stroke-width="3"/>
-    <path d="M-13 -3 Q0 4 13 -3" stroke="${INK}" stroke-width="2" fill="none"/>
-    <path d="M-10 7 Q0 0 10 7" stroke="${INK}" stroke-width="2" fill="none"/>
-  </g>`;
-
-  return svgShell('r-volley', `
-    ${scribble('r-volley', accent)}
-    <g filter="url(#r-volley)">
-      ${ground(accent)}
-      <g stroke="${INK}" stroke-width="2.6" fill="none" opacity="0.78" stroke-linecap="round">
-        <line x1="560" y1="462" x2="560" y2="200"/>
-        <line x1="480" y1="204" x2="640" y2="204"/>
-        <line x1="490" y1="218" x2="632" y2="218" opacity="0.4"/>
-        <line x1="500" y1="232" x2="624" y2="232" opacity="0.4"/>
-        <line x1="510" y1="204" x2="510" y2="246" opacity="0.4"/>
-        <line x1="540" y1="204" x2="540" y2="246" opacity="0.4"/>
-        <line x1="570" y1="204" x2="570" y2="246" opacity="0.4"/>
-        <line x1="600" y1="204" x2="600" y2="246" opacity="0.4"/>
-      </g>
-      <g transform="translate(0 ${jy})">
-        <g stroke="${INK}" stroke-width="${LW}" stroke-linecap="round" fill="none">
-          <circle cx="300" cy="165" r="30"/>
-          <line x1="300" y1="195" x2="300" y2="320"/>
-          <line x1="300" y1="210" x2="260" y2="268"/>
-          <line x1="300" y1="206" x2="${hx}" y2="${hy}"/>
-          <line x1="300" y1="320" x2="278" y2="460"/>
-          <line x1="300" y1="320" x2="322" y2="460"/>
-        </g>
-        ${ballInGroup ? ball : ''}
-      </g>
-      ${!ballInGroup ? ball : ''}
-    </g>`);
-}
-
-function drawBasket(p, accent) {
-  const ph = clamp(p, 0, 1) * 3;
-  const bounce = Math.abs(Math.sin(Math.PI * ph));
-  const by = 448 - (448 - 300) * bounce;
-  const bx = 556 + 16 * Math.sin(Math.PI * ph);
-  const hx = bx - 6;
-  const hy = Math.min(by - 26, 332);
-
-  return svgShell('r-basket', `
-    ${scribble('r-basket', accent)}
-    <g filter="url(#r-basket)">
-      ${ground(accent)}
-      <g stroke="${INK}" stroke-width="${LW}" stroke-linecap="round" fill="none">
-        <circle cx="500" cy="165" r="30"/>
-        <line x1="500" y1="195" x2="500" y2="320"/>
-        <line x1="500" y1="208" x2="458" y2="262"/>
-        <line x1="500" y1="206" x2="${hx}" y2="${hy}"/>
-        <line x1="500" y1="320" x2="480" y2="460"/>
-        <line x1="500" y1="320" x2="520" y2="460"/>
-      </g>
-      <g transform="translate(${bx} ${by})">
-        <circle cx="0" cy="0" r="16" fill="#f1ebdd" stroke="${INK}" stroke-width="3"/>
-        <line x1="-16" y1="0" x2="16" y2="0" stroke="${INK}" stroke-width="1.8"/>
-        <path d="M0 -16 Q7 0 0 16" stroke="${INK}" stroke-width="1.8" fill="none"/>
-        <path d="M0 -16 Q-7 0 0 16" stroke="${INK}" stroke-width="1.8" fill="none"/>
-      </g>
-    </g>`);
-}
-
-function drawGuitar(p, accent) {
-  const ph = clamp(p, 0, 1) * 5;
-  const s = Math.sin(Math.PI * ph);
-  const m = (s + 1) / 2;
-  const sx = lerp(540, 566, m);
-  const sy = lerp(312, 420, m);
-  const pp = clamp(p, 0, 1);
-
-  return svgShell('r-guitar', `
-    ${scribble('r-guitar', accent)}
-    <g filter="url(#r-guitar)">
-      ${ground(accent)}
-      <g stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round">
-        <ellipse cx="520" cy="360" rx="60" ry="80" transform="rotate(-18 520 360)"/>
-        <circle cx="516" cy="354" r="15" opacity="0.7"/>
-        <line x1="474" y1="322" x2="306" y2="188"/>
-        <line x1="482" y1="314" x2="314" y2="180" opacity="0.45"/>
-        <line x1="466" y1="330" x2="298" y2="196" opacity="0.45"/>
-      </g>
-      <g stroke="${INK}" stroke-width="${LW}" stroke-linecap="round" fill="none">
-        <circle cx="420" cy="165" r="30"/>
-        <line x1="420" y1="195" x2="420" y2="320"/>
-        <line x1="420" y1="208" x2="330" y2="226"/>
-        <line x1="420" y1="212" x2="${sx}" y2="${sy}"/>
-        <line x1="420" y1="320" x2="402" y2="460"/>
-        <line x1="420" y1="320" x2="440" y2="460"/>
-      </g>
-      <text x="600" y="${lerp(310, 180, pp)}" font-family="'Space Mono',monospace" font-size="30" fill="${accent}" opacity="0.7">&#9834;</text>
-      <text x="650" y="${lerp(340, 200, pp)}" font-family="'Space Mono',monospace" font-size="22" fill="${accent}" opacity="0.5">&#9835;</text>
-    </g>`);
-}
-
-const state = {
-  prog: { soccer: 0, volley: 0, basket: 0, guitar: 0 },
-  active: 0
-};
-
-function measure() {
-  const vh = window.innerHeight;
-  const prog = {};
-  let active = 0, best = Infinity;
-
-  KEYS.forEach((k, i) => {
-    const el = document.getElementById(`sec-${k}`);
-    if (!el) { prog[k] = state.prog[k] || 0; return; }
-    const r = el.getBoundingClientRect();
-    const total = r.height - vh;
-    prog[k] = clamp(total > 0 ? -r.top / total : 0, 0, 1);
-    const center = Math.abs((r.top + r.height / 2) - vh / 2);
-    if (center < best) { best = center; active = i; }
-  });
-
-  state.prog = prog;
-  state.active = active;
-  render();
-}
-
-function render() {
-  const { prog, active } = state;
-
-  const dot = document.getElementById('nav-dot');
-  if (dot) {
-    dot.style.transform = `translateY(${active * 50 + 9}px)`;
-    dot.style.background = DOT_COLORS[active];
-  }
-
-  const draws = { soccer: drawSoccer, volley: drawVolley, basket: drawBasket, guitar: drawGuitar };
-  KEYS.forEach(k => {
-    const el = document.getElementById(`scene-${k}`);
-    if (el) el.innerHTML = draws[k](prog[k], ACCENTS[k]);
-  });
-}
-
-let raf = null;
-function onScroll() {
-  if (raf !== null) return;
-  raf = requestAnimationFrame(() => { raf = null; measure(); });
-}
-
-window.addEventListener('scroll', onScroll, { passive: true });
-window.addEventListener('resize', onScroll);
-measure();
-</script>
-
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"
+        integrity="sha384-g4NTh/Iv5PPU4xPyhEWqPcwtNXOvdaDI8LLnyYfyNZOjKJeYQyjzQ9X5275eBjpt"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"
+        integrity="sha384-Z3REaz79l2IaAZqJsSABtTbhjgOUYyV3p90XNnAPCSHg3EMTz1fouunq9WZRtj3d"
+        crossorigin="anonymous"></script>
+<script src="main.js"></script>
 </body>
 </html>
