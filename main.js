@@ -44,12 +44,16 @@ function init() {
 function setupNavDot() {
   const dot = document.getElementById('nav-dot');
   SECTIONS.forEach((key, i) => {
+    const activate = () => {
+      dot.style.transform = `translateY(${DOT_Y[i]}px)`;
+      dot.style.background = ACCENTS[i];
+    };
     ScrollTrigger.create({
       trigger: `#sec-${key}`,
       start: 'top 55%',
       end: 'bottom 55%',
-      onEnter()     { dot.style.transform = `translateY(${DOT_Y[i]}px)`; dot.style.background = ACCENTS[i]; },
-      onEnterBack() { dot.style.transform = `translateY(${DOT_Y[i]}px)`; dot.style.background = ACCENTS[i]; },
+      onEnter: activate,
+      onEnterBack: activate,
     });
   });
 }
@@ -74,6 +78,7 @@ function setupSceneReveal() {
     });
   });
 }
+
 function setupSoccer() {
   const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
   tl.to('#soc-leg-r', { duration: 0.35, attr: { x2: 424, y2: 438 } });
@@ -83,21 +88,23 @@ function setupSoccer() {
   tl.to('#soc-arm-l', { duration: 0.2, attr: { x2: 392, y2: 240 } }, 0.35);
   tl.to('#bsoc', { duration: 0.55, x: 313, ease: 'power1.inOut' }, 0.45);
   tl.to('#bsoc', { duration: 0.275, y: -60, ease: 'power2.out' }, 0.45);
-  tl.to('#bsoc', { duration: 0.275, y: -14, ease: 'power2.in'  }, 0.725);
+  tl.to('#bsoc', { duration: 0.275, y: -14, ease: 'power2.in' }, 0.725);
   ScrollTrigger.create({ trigger: '#sec-soccer', start: 'top top', end: 'bottom bottom', scrub: 0.5, animation: tl });
 }
+
 function setupVolley() {
   const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
   tl.to('#vol-figure', { duration: 0.25, y: 14, ease: 'power2.in' });
   tl.to('#vol-figure', { duration: 0.35, y: -80, ease: 'back.out(1.4)' });
   tl.to('#vol-arm-r', { duration: 0.25, attr: { x2: 360, y2: 78 }, ease: 'power2.out' }, 0.35);
   tl.to('#bvol', { duration: 0.2, y: -30, ease: 'power2.out' }, 0.35);
-  tl.to('#bvol', { duration: 0.35, x: 510, ease: 'expo.out'  }, 0.5);
+  tl.to('#bvol', { duration: 0.35, x: 510, ease: 'expo.out' }, 0.5);
   tl.to('#bvol', { duration: 0.35, y: 310, ease: 'power2.in' }, 0.5);
   tl.to('#vol-arm-r', { duration: 0.2, attr: { x2: 372, y2: 292 }, ease: 'power2.in' }, 0.6);
   tl.to('#vol-figure', { duration: 0.3, y: 0, ease: 'power2.in' }, 0.65);
   ScrollTrigger.create({ trigger: '#sec-volley', start: 'top top', end: 'bottom bottom', scrub: 0.5, animation: tl });
 }
+
 function setupBasket() {
   const tl = gsap.timeline();
 
@@ -114,6 +121,7 @@ function setupBasket() {
 
   ScrollTrigger.create({ trigger: '#sec-basket', start: 'top top', end: 'bottom bottom', scrub: 0.6, animation: tl });
 }
+
 function setupGuitar() {
   const tl = gsap.timeline();
   const armUp   = { x2: 540, y2: 312 };
