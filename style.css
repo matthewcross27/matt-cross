@@ -65,8 +65,6 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .hero__h1 {
   font-family: var(--font-serif); font-weight: 500;
   font-size: clamp(46px, 8.5vw, 108px); line-height: .98; margin: 6px 0;
-  clip-path: inset(0 0 100% 0);
-  transition: clip-path .8s .1s var(--ease-out);
 }
 .hero__sub {
   font-size: clamp(17px, 2.4vw, 22px); max-width: 520px;
@@ -75,7 +73,6 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   transition: clip-path .8s .2s var(--ease-out);
 }
 .hero.is-loaded .hero__eyebrow,
-.hero.is-loaded .hero__h1,
 .hero.is-loaded .hero__sub { clip-path: inset(0 0 0% 0); }
 
 .hero__figure { width: 188px; height: auto; margin-top: 28px; }
@@ -85,15 +82,42 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   color: var(--ink-dim); display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
 
-/* ── Sections ──────────────────────────────────── */
-.section { height: 200vh; position: relative; }
-.section__sticky {
-  position: sticky; top: 0; height: 100vh;
-  display: flex; flex-direction: column; justify-content: center; align-items: center;
-  padding: 0 24px;
+/* ── Sections (natural scroll) ────────────────── */
+.section {
+  position: relative;
+  min-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
 }
-.section__inner { width: 100%; max-width: 1000px; text-align: center; }
-.section__header { display: flex; align-items: baseline; gap: 14px; justify-content: center; }
+
+.section__anim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.section__anim canvas.anim-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.section__content {
+  position: relative;
+  z-index: 1;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 80px 24px 0;
+  width: 100%;
+}
+
+.section__header { display: flex; align-items: baseline; gap: 14px; }
+
 .section__num {
   font-family: var(--font-mono); font-size: clamp(18px, 3vw, 28px);
   clip-path: inset(0 0 100% 0);
@@ -105,15 +129,66 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 }
 .section__caption {
   font-family: var(--font-mono); font-size: 13px; letter-spacing: .1em;
-  color: var(--ink-dim); max-width: 420px; margin: 10px auto 2px; line-height: 1.6;
+  color: var(--ink-dim); max-width: 420px; margin: 10px 0 2px; line-height: 1.6;
   clip-path: inset(0 0 100% 0);
 }
-.section__scene {
-  display: block; width: 100%; max-height: 52vh;
-  opacity: 0; transform: scale(0.95); transform-origin: center bottom;
-  transition: opacity .6s var(--ease-out), transform .6s var(--ease-out);
+
+/* ── Ball elements ──────────────────────────────── */
+.soccer-ball {
+  position: absolute;
+  width: 32px; height: 32px;
+  top: calc(72% - 32px);
+  left: -36px;
+  will-change: transform;
 }
-.section__scene.is-visible { opacity: 1; transform: scale(1); }
+
+.volley-ball {
+  position: absolute;
+  width: 30px; height: 30px;
+  bottom: 28%;
+  left: 14%;
+  will-change: transform;
+}
+
+.basket-ball {
+  position: absolute;
+  width: 34px; height: 34px;
+  top: 22%; left: 8%;
+  transform-origin: center bottom;
+  will-change: transform;
+}
+
+.basket-shadow {
+  position: absolute;
+  top: calc(72% - 5px); left: 44%;
+  width: 36px; height: 10px;
+  border-radius: 50%;
+  background: rgba(43, 43, 43, 0.22);
+  transform: translateX(-50%) scaleX(0.3);
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+/* ── Guitar overlays (above canvas) ─────────────── */
+.guitar-strings {
+  position: absolute;
+  bottom: 6%; left: 0;
+  width: 100%; height: 32%;
+  z-index: 1;
+}
+
+.guitar-notes {
+  position: absolute;
+  bottom: 14%; left: calc(50% - 60px);
+  width: 120px; height: 200px;
+  overflow: visible;
+  z-index: 1;
+}
+
+/* ── Hero chars ─────────────────────────────────── */
+.hero__word { display: inline-block; margin-right: 0.28em; }
+em.hero__word { margin-right: 0; font-style: italic; }
+.hero__char { display: inline-block; will-change: transform, opacity; }
 
 /* ── Projects ──────────────────────────────────── */
 .projects { padding: 80px 24px 100px; max-width: 1000px; margin: 0 auto; }
