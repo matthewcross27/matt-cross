@@ -71,7 +71,45 @@
         <p class="section__caption">[ a line about what the pitch means to you ]</p>
         <svg id="scene-soccer" class="section__scene" viewBox="0 0 1000 600"
              aria-label="Soccer: stick figure winds up and kicks ball into goal" role="img">
-          <!-- SVG markup added in Task 3 -->
+          <defs>
+            <filter id="r-soccer" x="-20%" y="-20%" width="140%" height="140%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="7" result="n"/>
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/>
+            </filter>
+          </defs>
+          <g stroke="#6f8f5e" stroke-width="3" fill="none" opacity="0.3" stroke-linecap="round">
+            <ellipse cx="500" cy="330" rx="330" ry="200" transform="rotate(-4 500 330)"/>
+            <ellipse cx="500" cy="330" rx="312" ry="184" transform="rotate(5 500 330)" opacity="0.6"/>
+          </g>
+          <g filter="url(#r-soccer)" stroke-linecap="round">
+            <line x1="80" y1="462" x2="920" y2="462" stroke="#6f8f5e" stroke-width="2.4" opacity="0.5"/>
+            <line x1="740" y1="298" x2="910" y2="298" stroke="#2b2b2b" stroke-width="2.6" opacity="0.85"/>
+            <line x1="740" y1="298" x2="740" y2="462" stroke="#2b2b2b" stroke-width="2.6" opacity="0.85"/>
+            <line x1="910" y1="298" x2="910" y2="462" stroke="#2b2b2b" stroke-width="2.6" opacity="0.85"/>
+            <g stroke="#2b2b2b" stroke-width="1.2" opacity="0.28">
+              <line x1="775" y1="298" x2="775" y2="462"/>
+              <line x1="812" y1="298" x2="812" y2="462"/>
+              <line x1="850" y1="298" x2="850" y2="462"/>
+              <line x1="880" y1="298" x2="880" y2="462"/>
+              <line x1="740" y1="345" x2="910" y2="345"/>
+              <line x1="740" y1="393" x2="910" y2="393"/>
+              <line x1="740" y1="434" x2="910" y2="434"/>
+            </g>
+            <g stroke="#2b2b2b" stroke-width="3.4" fill="none">
+              <circle cx="460" cy="165" r="30"/>
+              <line x1="460" y1="195" x2="460" y2="320"/>
+              <line id="soc-arm-l" x1="460" y1="208" x2="414" y2="262"/>
+              <line id="soc-arm-r" x1="460" y1="208" x2="506" y2="255"/>
+              <line x1="460" y1="320" x2="440" y2="460"/>
+              <line id="soc-leg-r" x1="460" y1="320" x2="488" y2="460"/>
+            </g>
+            <g id="bsoc" transform="translate(502 448)">
+              <circle cx="0" cy="0" r="15" fill="#f1ebdd" stroke="#2b2b2b" stroke-width="3"/>
+              <line x1="-9" y1="-3" x2="0" y2="6" stroke="#2b2b2b" stroke-width="1.8"/>
+              <line x1="9" y1="-3" x2="0" y2="6" stroke="#2b2b2b" stroke-width="1.8"/>
+              <line x1="0" y1="6" x2="0" y2="14" stroke="#2b2b2b" stroke-width="1.8"/>
+            </g>
+          </g>
         </svg>
       </div>
     </div>
@@ -87,7 +125,43 @@
         <p class="section__caption">[ sand, the net, the line you love ]</p>
         <svg id="scene-volley" class="section__scene" viewBox="0 0 1000 600"
              aria-label="Volleyball: stick figure crouches, jumps, and spikes" role="img">
-          <!-- SVG markup added in Task 4 -->
+          <defs>
+            <filter id="r-volley" x="-20%" y="-20%" width="140%" height="140%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="11" result="n"/>
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/>
+            </filter>
+          </defs>
+          <g stroke="#4f8a91" stroke-width="3" fill="none" opacity="0.3" stroke-linecap="round">
+            <ellipse cx="500" cy="330" rx="330" ry="200" transform="rotate(-4 500 330)"/>
+            <ellipse cx="500" cy="330" rx="312" ry="184" transform="rotate(5 500 330)" opacity="0.6"/>
+          </g>
+          <g filter="url(#r-volley)" stroke-linecap="round">
+            <line x1="80" y1="462" x2="920" y2="462" stroke="#4f8a91" stroke-width="2.4" opacity="0.5"/>
+            <line x1="560" y1="462" x2="560" y2="198" stroke="#2b2b2b" stroke-width="2.6" opacity="0.85"/>
+            <line x1="480" y1="202" x2="640" y2="202" stroke="#2b2b2b" stroke-width="2.6" opacity="0.85"/>
+            <line x1="480" y1="248" x2="640" y2="248" stroke="#2b2b2b" stroke-width="2.6" opacity="0.6"/>
+            <g stroke="#2b2b2b" stroke-width="1.2" opacity="0.3">
+              <line x1="508" y1="202" x2="508" y2="248"/>
+              <line x1="536" y1="202" x2="536" y2="248"/>
+              <line x1="564" y1="202" x2="564" y2="248"/>
+              <line x1="592" y1="202" x2="592" y2="248"/>
+              <line x1="480" y1="220" x2="640" y2="220"/>
+              <line x1="480" y1="236" x2="640" y2="236"/>
+            </g>
+            <g id="vol-figure" stroke="#2b2b2b" stroke-width="3.4" fill="none">
+              <circle cx="300" cy="165" r="30"/>
+              <line x1="300" y1="195" x2="300" y2="320"/>
+              <line x1="300" y1="210" x2="260" y2="268"/>
+              <line id="vol-arm-r" x1="300" y1="206" x2="348" y2="254"/>
+              <line x1="300" y1="320" x2="278" y2="460"/>
+              <line x1="300" y1="320" x2="322" y2="460"/>
+            </g>
+            <g id="bvol" transform="translate(300 122)">
+              <circle cx="0" cy="0" r="14" fill="#f1ebdd" stroke="#2b2b2b" stroke-width="3"/>
+              <path d="M-13 -3 Q0 4 13 -3" stroke="#2b2b2b" stroke-width="1.8" fill="none"/>
+              <path d="M-10 7 Q0 0 10 7"   stroke="#2b2b2b" stroke-width="1.8" fill="none"/>
+            </g>
+          </g>
         </svg>
       </div>
     </div>
@@ -103,7 +177,44 @@
         <p class="section__caption">[ the rhythm of the dribble ]</p>
         <svg id="scene-basket" class="section__scene" viewBox="0 0 1000 600"
              aria-label="Basketball: stick figure dribbles three times" role="img">
-          <!-- SVG markup added in Task 5 -->
+          <defs>
+            <filter id="r-basket" x="-20%" y="-20%" width="140%" height="140%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="5" result="n"/>
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/>
+            </filter>
+          </defs>
+          <g stroke="#cf8542" stroke-width="3" fill="none" opacity="0.3" stroke-linecap="round">
+            <ellipse cx="500" cy="330" rx="330" ry="200" transform="rotate(-4 500 330)"/>
+            <ellipse cx="500" cy="330" rx="312" ry="184" transform="rotate(5 500 330)" opacity="0.6"/>
+          </g>
+          <g filter="url(#r-basket)" stroke-linecap="round">
+            <line x1="80" y1="462" x2="920" y2="462" stroke="#cf8542" stroke-width="2.4" opacity="0.5"/>
+            <line x1="720" y1="462" x2="720" y2="218" stroke="#2b2b2b" stroke-width="2.6"/>
+            <rect x="680" y="220" width="100" height="52" fill="none" stroke="#2b2b2b" stroke-width="2.6" opacity="0.85"/>
+            <line x1="720" y1="272" x2="660" y2="272" stroke="#2b2b2b" stroke-width="2.6"/>
+            <ellipse cx="630" cy="272" rx="30" ry="8" fill="none" stroke="#2b2b2b" stroke-width="2.6"/>
+            <g stroke="#2b2b2b" stroke-width="1.4" opacity="0.5">
+              <line x1="608" y1="280" x2="606" y2="312"/>
+              <line x1="618" y1="280" x2="616" y2="312"/>
+              <line x1="628" y1="280" x2="628" y2="312"/>
+              <line x1="638" y1="280" x2="640" y2="312"/>
+              <line x1="648" y1="280" x2="650" y2="312"/>
+            </g>
+            <g stroke="#2b2b2b" stroke-width="3.4" fill="none">
+              <circle cx="500" cy="165" r="30"/>
+              <line x1="500" y1="195" x2="500" y2="320"/>
+              <line x1="500" y1="208" x2="458" y2="262"/>
+              <line id="bas-arm-r" x1="500" y1="206" x2="550" y2="300"/>
+              <line x1="500" y1="320" x2="480" y2="460"/>
+              <line x1="500" y1="320" x2="520" y2="460"/>
+            </g>
+            <g id="bball" transform="translate(556 300)">
+              <circle cx="0" cy="0" r="16" fill="#f1ebdd" stroke="#2b2b2b" stroke-width="3"/>
+              <line x1="-16" y1="0" x2="16" y2="0" stroke="#2b2b2b" stroke-width="1.8"/>
+              <path d="M0 -16 Q7 0 0 16"  stroke="#2b2b2b" stroke-width="1.8" fill="none"/>
+              <path d="M0 -16 Q-7 0 0 16" stroke="#2b2b2b" stroke-width="1.8" fill="none"/>
+            </g>
+          </g>
         </svg>
       </div>
     </div>
@@ -119,7 +230,40 @@
         <p class="section__caption">[ what you play when no one's around ]</p>
         <svg id="scene-guitar" class="section__scene" viewBox="0 0 1000 600"
              aria-label="Guitar: stick figure strums while notes float upward" role="img">
-          <!-- SVG markup added in Task 6 -->
+          <defs>
+            <filter id="r-guitar" x="-20%" y="-20%" width="140%" height="140%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="3" result="n"/>
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/>
+            </filter>
+          </defs>
+          <g stroke="#7d5f86" stroke-width="3" fill="none" opacity="0.3" stroke-linecap="round">
+            <ellipse cx="500" cy="330" rx="330" ry="200" transform="rotate(-4 500 330)"/>
+            <ellipse cx="500" cy="330" rx="312" ry="184" transform="rotate(5 500 330)" opacity="0.6"/>
+          </g>
+          <g filter="url(#r-guitar)" stroke-linecap="round">
+            <line x1="80" y1="462" x2="920" y2="462" stroke="#7d5f86" stroke-width="2.4" opacity="0.5"/>
+            <g stroke="#2b2b2b" stroke-width="2.6" fill="none">
+              <ellipse cx="520" cy="360" rx="60" ry="80" transform="rotate(-18 520 360)"/>
+              <circle cx="516" cy="354" r="15" opacity="0.7"/>
+              <line x1="474" y1="322" x2="306" y2="188"/>
+              <line x1="466" y1="330" x2="298" y2="196" opacity="0.45"/>
+              <line x1="482" y1="314" x2="314" y2="180" opacity="0.45"/>
+            </g>
+            <g stroke="#2b2b2b" stroke-width="3.4" fill="none">
+              <circle cx="420" cy="165" r="30"/>
+              <line x1="420" y1="195" x2="420" y2="320"/>
+              <line x1="420" y1="208" x2="330" y2="226"/>
+              <line id="guit-arm-r" x1="420" y1="212" x2="540" y2="312"/>
+              <line x1="420" y1="320" x2="402" y2="460"/>
+              <line x1="420" y1="320" x2="440" y2="460"/>
+            </g>
+            <text id="gnote-1" x="598" y="310" font-family="'Space Mono',monospace"
+                  font-size="30" fill="#7d5f86" opacity="0">&#9834;</text>
+            <text id="gnote-2" x="646" y="344" font-family="'Space Mono',monospace"
+                  font-size="22" fill="#7d5f86" opacity="0">&#9835;</text>
+            <text id="gnote-3" x="588" y="372" font-family="'Space Mono',monospace"
+                  font-size="18" fill="#7d5f86" opacity="0">&#9834;</text>
+          </g>
         </svg>
       </div>
     </div>
@@ -128,7 +272,36 @@
   <section class="projects" aria-label="Selected work">
     <p class="projects__eyebrow">selected work</p>
     <div class="projects__grid">
-      <!-- Project cards added in Task 7 -->
+      <article class="project-card">
+        <svg class="project-card__border" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs><filter id="rc1"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="2"/><feDisplacementMap in="SourceGraphic" scale="1.4"/></filter></defs>
+          <rect x="1" y="1" width="98" height="98" filter="url(#rc1)"/>
+        </svg>
+        <p class="project-card__label">2025 · Web</p>
+        <h3 class="project-card__title">Project One</h3>
+        <p class="project-card__desc">[ one sentence — what it does and why it matters ]</p>
+        <a class="project-card__link" href="#" target="_blank" rel="noopener">view ↗</a>
+      </article>
+      <article class="project-card">
+        <svg class="project-card__border" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs><filter id="rc2"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="9"/><feDisplacementMap in="SourceGraphic" scale="1.4"/></filter></defs>
+          <rect x="1" y="1" width="98" height="98" filter="url(#rc2)"/>
+        </svg>
+        <p class="project-card__label">2025 · Design</p>
+        <h3 class="project-card__title">Project Two</h3>
+        <p class="project-card__desc">[ one sentence — what it does and why it matters ]</p>
+        <a class="project-card__link" href="#" target="_blank" rel="noopener">view ↗</a>
+      </article>
+      <article class="project-card">
+        <svg class="project-card__border" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs><filter id="rc3"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="14"/><feDisplacementMap in="SourceGraphic" scale="1.4"/></filter></defs>
+          <rect x="1" y="1" width="98" height="98" filter="url(#rc3)"/>
+        </svg>
+        <p class="project-card__label">2024 · Tool</p>
+        <h3 class="project-card__title">Project Three</h3>
+        <p class="project-card__desc">[ one sentence — what it does and why it matters ]</p>
+        <a class="project-card__link" href="#" target="_blank" rel="noopener">view ↗</a>
+      </article>
     </div>
   </section>
 
