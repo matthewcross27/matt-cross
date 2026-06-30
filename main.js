@@ -41,8 +41,39 @@ function init() {
   setupProjectReveal();
 }
 
-function setupNavDot()        { /* Task 2 */ }
-function setupSceneReveal()   { /* Task 2 */ }
+function setupNavDot() {
+  const dot = document.getElementById('nav-dot');
+  SECTIONS.forEach((key, i) => {
+    ScrollTrigger.create({
+      trigger: `#sec-${key}`,
+      start: 'top 55%',
+      end: 'bottom 55%',
+      onEnter()     { dot.style.transform = `translateY(${DOT_Y[i]}px)`; dot.style.background = ACCENTS[i]; },
+      onEnterBack() { dot.style.transform = `translateY(${DOT_Y[i]}px)`; dot.style.background = ACCENTS[i]; },
+    });
+  });
+}
+
+function setupSceneReveal() {
+  SECTIONS.forEach(key => {
+    const section = document.getElementById(`sec-${key}`);
+    const num     = section.querySelector('.section__num');
+    const title   = section.querySelector('.section__title');
+    const caption = section.querySelector('.section__caption');
+    const scene   = section.querySelector('.section__scene');
+
+    ScrollTrigger.create({
+      trigger: section,
+      start: 'top 60%',
+      once: true,
+      onEnter() {
+        scene.classList.add('is-visible');
+        gsap.to([num, title], { clipPath: 'inset(0 0 0% 0)', ease: 'power3.out', duration: 0.7, stagger: 0.08 });
+        gsap.to(caption, { clipPath: 'inset(0 0 0% 0)', ease: 'power3.out', duration: 0.6, delay: 0.2 });
+      },
+    });
+  });
+}
 function setupSoccer()        { /* Task 3 */ }
 function setupVolley()        { /* Task 4 */ }
 function setupBasket()        { /* Task 5 */ }
