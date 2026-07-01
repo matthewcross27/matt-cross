@@ -271,9 +271,16 @@ em.hero__word { margin-right: 0; font-style: italic; }
 /* ── Reduced motion ────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .hero__figure, .hero__scroll-arrow { animation: none; }
+
   .hero__eyebrow, .hero__h1, .hero__sub,
   .section__num, .section__title, .section__caption,
   .project-card { clip-path: none !important; }
-  .section__scene { opacity: 1 !important; transform: none !important; }
+
+  /* Hero chars: prevent GSAP from ever leaving them invisible */
+  .hero__char { opacity: 1 !important; transform: none !important; }
+
+  /* Hide all decoration layers — canvases, ball elements, strings */
+  .section__anim { display: none; }
+
   * { transition-duration: 0.01ms !important; }
 }
