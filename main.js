@@ -210,7 +210,119 @@ function setupVolley() {
     onLeaveBack: reset,
   });
 }
-function setupBasket()       { /* Task 4 */ }
+function setupBasket() {
+  const { Engine, Bodies, Body, World } = Matter;
+  const section = document.getElementById('sec-basket');
+  const canvas  = section.querySelector('canvas.anim-canvas');
+  const ball    = document.getElementById('bball');
+  const shadow  = document.getElementById('bball-shadow');
+
+  // ── Size canvas ──────────────────────────────────────────
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = canvas.clientWidth  * dpr;
+  canvas.height = canvas.clientHeight * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = canvas.clientWidth;
+  const H = canvas.clientHeight;
+
+  // ── Rough.js decorations ─────────────────────────────────
+  const rc = rough.canvas(canvas);
+
+  const groundY    = H * 0.72;
+  const hoopRight  = W * 0.96;
+  const rimCenterX = W * 0.80;
+  const rimCenterY = H * 0.30;
+  const rimW       = W * 0.08;
+
+  rc.line(0, groundY, W, groundY, {
+    stroke: '#cf8542', strokeWidth: 1.5, roughness: 0.7,
+  });
+  rc.line(hoopRight, H * 0.10, hoopRight, H * 0.42, {
+    stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 0.9, bowing: 0,
+  });
+  rc.rectangle(hoopRight - W * 0.04, H * 0.14, W * 0.033, H * 0.065, {
+    stroke: '#2b2b2b', strokeWidth: 1.2, roughness: 0.8, fill: 'none',
+  });
+  rc.line(hoopRight - W * 0.02, rimCenterY, rimCenterX + rimW / 2, rimCenterY, {
+    stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 0.8, bowing: 0,
+  });
+  rc.ellipse(rimCenterX, rimCenterY, rimW, rimW * 0.32, {
+    stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 1.0,
+  });
+  const netBase = rimCenterY + H * 0.09;
+  const netOpts = { stroke: '#2b2b2b', strokeWidth: 0.9, roughness: 0.7 };
+  for (let i = 0; i <= 4; i++) {
+    const fromX  = (rimCenterX - rimW / 2) + (rimW / 4) * i;
+    const drape  = i === 2 ? 0 : i < 2 ? -3 : 3;
+    rc.line(fromX, rimCenterY + 4, fromX + drape, netBase, netOpts);
+  }
+  rc.line(rimCenterX - rimW / 2 + 3, rimCenterY + H * 0.040, rimCenterX + rimW / 2 - 3, rimCenterY + H * 0.040, netOpts);
+  rc.line(rimCenterX - rimW / 2 + 6, rimCenterY + H * 0.065, rimCenterX + rimW / 2 - 6, rimCenterY + H * 0.065, netOpts);
+
+  // ── Matter.js physics ─────────────────────────────────────
+  const engine = Engine.create({ gravity: { y: 1.5 } });
+
+  // Ball CSS: top: 22%, left: 8% → center
+  const startX = W * 0.08 + 17;
+  const startY = H * 0.22 + 17;
+
+  const ballBody  = Bodies.circle(startX, startY, 17, {
+    isStatic: true, restitution: 0.55, friction: 0.3, frictionAir: 0.01,
+  });
+  const floorBody = Bodies.rectangle(W / 2, groundY + 5, W * 2, 10, { isStatic: true });
+  World.add(engine.world, [ballBody, floorBody]);
+
+  let rafId    = null;
+  let launched = false;
+
+  function updateShadow(bodyY) {
+    const dist = Math.max(0, groundY - bodyY);
+    const maxD = groundY - startY;
+    const t    = 1 - dist / maxD;
+    gsap.set(shadow, { scaleX: 0.25 + t * 1.2, opacity: 0.04 + t * 0.18 });
+  }
+
+  function tick() {
+    Engine.update(engine, 1000 / 60);
+    const p = ballBody.position;
+    gsap.set(ball, { x: p.x - startX, y: p.y - startY });
+    updateShadow(p.y);
+    if (p.x > W + 80 || p.y > H + 80) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      return;
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function launch() {
+    if (launched) return;
+    launched = true;
+    Body.setStatic(ballBody, false);
+    // Slight rightward drift; gravity does the drop; bounce sends it toward hoop
+    // Tune x to control how far right ball travels after bounce
+    Body.setVelocity(ballBody, { x: W / 240, y: 1 });
+    tick();
+  }
+
+  function reset() {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    Body.setStatic(ballBody, true);
+    Body.setPosition(ballBody, { x: startX, y: startY });
+    Body.setVelocity(ballBody, { x: 0, y: 0 });
+    gsap.set(ball,   { x: 0, y: 0 });
+    gsap.set(shadow, { scaleX: 0.3, opacity: 0.04 });
+    launched = false;
+  }
+
+  ScrollTrigger.create({
+    trigger: section,
+    start: 'top 70%',
+    onEnter:     launch,
+    onLeaveBack: reset,
+  });
+}
 function setupGuitar()       { /* Task 5 */ }
 
 function setupProjectReveal() {
