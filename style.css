@@ -7,7 +7,6 @@
   --ink-faint: rgba(43,43,43,.14);
 
   --soccer:    #6f8f5e;
-  --volley:    #4f8a91;
   --basket:    #cf8542;
   --guitar:    #7d5f86;
 
@@ -139,14 +138,6 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   width: 32px; height: 32px;
   top: calc(72% - 32px);
   left: -36px;
-  will-change: transform;
-}
-
-.volley-ball {
-  position: absolute;
-  width: 30px; height: 30px;
-  bottom: 28%;
-  left: 14%;
   will-change: transform;
 }
 
