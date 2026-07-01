@@ -52,7 +52,26 @@ function setupNavDot() {
   });
 }
 
-function setupHeroEntrance() { /* Task 6 */ }
+function setupHeroEntrance() {
+  const chars = document.querySelectorAll('.hero__char');
+
+  gsap.set(chars, { y: -55, opacity: 0 });
+
+  // Shorter period (0.32) = snaps in fast (lighter feel).
+  // Longer period (0.62) = slow oscillation, more bounce cycles (heavier feel).
+  const periods = [0.48, 0.36, 0.58, 0.42, 0.32, 0.50, 0.62, 0.44, 0.38, 0.46];
+
+  chars.forEach((char, i) => {
+    const period = periods[i] ?? 0.44;
+    gsap.to(char, {
+      y: 0,
+      opacity: 1,
+      ease: `elastic.out(1, ${period})`,
+      duration: 1.4,
+      delay: 0.06 + i * 0.045,
+    });
+  });
+}
 function setupSoccer() {
   const section = document.getElementById('sec-soccer');
   const canvas  = section.querySelector('canvas.anim-canvas');
