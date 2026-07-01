@@ -323,7 +323,82 @@ function setupBasket() {
     onLeaveBack: reset,
   });
 }
-function setupGuitar()       { /* Task 5 */ }
+function setupGuitar() {
+  const section = document.getElementById('sec-guitar');
+  const canvas  = section.querySelector('canvas.anim-canvas');
+
+  // ── Size canvas ──────────────────────────────────────────
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = canvas.clientWidth  * dpr;
+  canvas.height = canvas.clientHeight * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = canvas.clientWidth;
+  const H = canvas.clientHeight;
+
+  // ── Rough.js decorations ─────────────────────────────────
+  const rc = rough.canvas(canvas);
+
+  // Bridge (where strings anchor at bottom-center)
+  const bridgeW = W * 0.10;
+  rc.rectangle(W / 2 - bridgeW / 2, H * 0.925, bridgeW, H * 0.022, {
+    stroke: '#7d5f86', strokeWidth: 1.2, roughness: 1.4,
+    fill: 'rgba(125, 95, 134, 0.06)', fillStyle: 'solid',
+  });
+
+  // Nut (thin bar at far left where strings begin)
+  rc.rectangle(W * 0.01, H * 0.68, W * 0.005, H * 0.25, {
+    stroke: '#7d5f86', strokeWidth: 1.0, roughness: 1.3,
+    fill: 'rgba(125, 95, 134, 0.08)', fillStyle: 'solid',
+  });
+
+  // Fret position dots — three frets visible
+  [0.22, 0.42, 0.60].forEach(pct => {
+    rc.circle(W * pct, H * 0.815, 9, {
+      stroke: '#7d5f86', strokeWidth: 1.0, roughness: 1.0,
+      fill: 'rgba(125, 95, 134, 0.10)', fillStyle: 'solid',
+    });
+  });
+
+  // ── GSAP string vibration ────────────────────────────────
+  const tl = gsap.timeline();
+
+  const strings = [
+    { id: 'gstr-1', y: 30,  amp: 20 },
+    { id: 'gstr-2', y: 66,  amp: 26 },
+    { id: 'gstr-3', y: 102, amp: 32 },
+    { id: 'gstr-4', y: 138, amp: 24 },
+    { id: 'gstr-5', y: 170, amp: 16 },
+  ];
+
+  strings.forEach(({ id, y, amp }, i) => {
+    const el     = document.getElementById(id);
+    const offset = i * 0.045;
+
+    // All four path states use identical M C command count — required for GSAP d-interpolation
+    const flat    = `M 0 ${y} C 333 ${y}             667 ${y}             1000 ${y}`;
+    const peak    = `M 0 ${y} C 333 ${y - amp}       667 ${y + amp}       1000 ${y}`;
+    const rebound = `M 0 ${y} C 333 ${y + amp * 0.4} 667 ${y - amp * 0.4} 1000 ${y}`;
+    const settle  = `M 0 ${y} C 333 ${y - amp * 0.1} 667 ${y + amp * 0.1} 1000 ${y}`;
+
+    tl.to(el, { attr: { d: peak    }, ease: 'power3.out',   duration: 0.08 }, offset);
+    tl.to(el, { attr: { d: rebound }, ease: 'power3.inOut', duration: 0.12 }, offset + 0.08);
+    tl.to(el, { attr: { d: settle  }, ease: 'power3.inOut', duration: 0.10 }, offset + 0.20);
+    tl.to(el, { attr: { d: flat    }, ease: 'power3.in',    duration: 0.14 }, offset + 0.30);
+  });
+
+  tl.fromTo('#gnote-1', { opacity: 0, y: 0 }, { opacity: 0.72, y: -120, ease: 'power1.out', duration: 0.7 }, 0);
+  tl.fromTo('#gnote-2', { opacity: 0, y: 0 }, { opacity: 0.52, y: -140, ease: 'power1.out', duration: 0.7 }, 0.06);
+  tl.fromTo('#gnote-3', { opacity: 0, y: 0 }, { opacity: 0.38, y: -130, ease: 'power1.out', duration: 0.7 }, 0.12);
+
+  ScrollTrigger.create({
+    trigger: section,
+    start: 'top bottom',
+    end: 'bottom top',
+    scrub: 0.4,
+    animation: tl,
+  });
+}
 
 function setupProjectReveal() {
   const cards = document.querySelectorAll('.project-card');
