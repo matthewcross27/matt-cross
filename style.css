@@ -137,7 +137,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   position: absolute;
   width: 32px; height: 32px;
   top: calc(72% - 32px);
-  left: -36px;
+  left: 20%;
   will-change: transform;
 }
 

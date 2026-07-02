@@ -76,7 +76,6 @@ function setupSoccer() {
   const canvas  = section.querySelector('canvas.anim-canvas');
   const ball    = document.getElementById('bsoc');
 
-  // ── Size canvas for device pixel ratio ──────────────────
   const dpr = window.devicePixelRatio || 1;
   canvas.width  = canvas.clientWidth  * dpr;
   canvas.height = canvas.clientHeight * dpr;
@@ -85,7 +84,6 @@ function setupSoccer() {
   const W = canvas.clientWidth;
   const H = canvas.clientHeight;
 
-  // ── Rough.js decorations (drawn once) ───────────────────
   const rc = rough.canvas(canvas);
 
   rc.line(0, H * 0.72, W, H * 0.72, {
@@ -97,35 +95,75 @@ function setupSoccer() {
   const goalTop    = H * 0.38;
   const goalBottom = H * 0.72;
 
-  rc.line(goalLeft, goalTop, goalLeft, goalBottom, {
-    stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 1.1, bowing: 0,
-  });
-  rc.line(goalLeft, goalTop, goalRight, goalTop, {
-    stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 1.1, bowing: 0,
-  });
+  rc.line(goalLeft, goalTop, goalLeft, goalBottom, { stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 1.1, bowing: 0 });
+  rc.line(goalLeft, goalTop, goalRight, goalTop,   { stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 1.1, bowing: 0 });
 
   const netOpts = { stroke: '#2b2b2b', strokeWidth: 0.9, roughness: 0.4 };
   const gW = goalRight - goalLeft;
   const gH = goalBottom - goalTop;
-  rc.line(goalLeft,          goalTop + gH * 0.33, goalRight, goalTop + gH * 0.33, netOpts);
-  rc.line(goalLeft,          goalTop + gH * 0.66, goalRight, goalTop + gH * 0.66, netOpts);
-  rc.line(goalLeft + gW * 0.33, goalTop,          goalLeft + gW * 0.33, goalBottom, netOpts);
-  rc.line(goalLeft + gW * 0.66, goalTop,          goalLeft + gW * 0.66, goalBottom, netOpts);
+  rc.line(goalLeft,             goalTop + gH * 0.33, goalRight, goalTop + gH * 0.33, netOpts);
+  rc.line(goalLeft,             goalTop + gH * 0.66, goalRight, goalTop + gH * 0.66, netOpts);
+  rc.line(goalLeft + gW * 0.33, goalTop,             goalLeft + gW * 0.33, goalBottom, netOpts);
+  rc.line(goalLeft + gW * 0.66, goalTop,             goalLeft + gW * 0.66, goalBottom, netOpts);
 
-  // ── GSAP scroll-scrub ───────────────────────────────────
-  const tl = gsap.timeline();
-  tl.to(ball, { x: () => window.innerWidth + 72, ease: 'power2.out', duration: 1 }, 0);
-  tl.to(ball, { y: -80, ease: 'power2.out', duration: 0.44 }, 0);
-  tl.to(ball, { y:   0, ease: 'power2.in',  duration: 0.56 }, 0.44);
-  tl.to(ball, { rotation: 540, ease: 'none', duration: 1 }, 0);
+  // CSS left:20% means ball rests at W*0.20 from left. Push off-screen with negative x.
+  gsap.set(ball, { x: -(W * 0.20 + 36), y: 0, rotation: 0, scale: 1, opacity: 1 });
+
+  let ready    = false;
+  let shooting = false;
+
+  section.style.cursor = 'crosshair';
+
+  function rollIn() {
+    if (ready || shooting) return;
+    gsap.to(ball, {
+      x: 0, rotation: -180,
+      ease: 'power2.out', duration: 0.6,
+      onComplete: () => { ready = true; },
+    });
+  }
+
+  function rollBack() {
+    ready = false; shooting = false;
+    gsap.killTweensOf(ball);
+    gsap.set(ball, { x: -(W * 0.20 + 36), y: 0, scale: 1, opacity: 1, rotation: 0 });
+  }
 
   ScrollTrigger.create({
-    trigger: section,
-    start: 'top bottom',
-    end: 'bottom top',
-    scrub: 0.9,
-    animation: tl,
-    invalidateOnRefresh: true,
+    trigger: section, start: 'top 70%',
+    onEnter: rollIn, onLeaveBack: rollBack,
+  });
+
+  section.addEventListener('click', e => {
+    if (!ready || shooting) return;
+    shooting = true;
+    ready = false;
+    section.querySelector('.section__hint')?.classList.add('is-hidden');
+
+    const rect   = section.getBoundingClientRect();
+    const yRatio = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+    // Map click y-position to a vertical aim spot inside the goal
+    const aimY  = goalTop + yRatio * gH;
+    // Ball CSS: left:20%, top:calc(72%-32px). x/y offsets are relative to that.
+    const destX = (goalLeft + gW * 0.5) - W * 0.20;
+    const destY = aimY - (H * 0.72 - 32);
+    const arcY  = destY - H * 0.22;
+
+    const tl = gsap.timeline({
+      onComplete() {
+        setTimeout(() => {
+          gsap.set(ball, { x: -(W * 0.20 + 36), y: 0, scale: 1, opacity: 1, rotation: 0 });
+          shooting = false;
+          rollIn();
+        }, 500);
+      },
+    });
+    tl.to(ball, { x: destX,          ease: 'power2.out', duration: 0.55 }, 0);
+    tl.to(ball, { y: arcY,           ease: 'power2.out', duration: 0.27 }, 0);
+    tl.to(ball, { y: destY,          ease: 'power2.in',  duration: 0.28 }, 0.27);
+    tl.to(ball, { rotation: '-=540', ease: 'none',       duration: 0.55 }, 0);
+    tl.to(ball, { scale: 0.65, opacity: 0,               duration: 0.18 }, 0.42);
   });
 }
 function setupBasket() {
