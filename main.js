@@ -166,13 +166,11 @@ function setupSoccer() {
   });
 }
 function setupBasket() {
-  const { Engine, Bodies, Body, World } = Matter;
   const section = document.getElementById('sec-basket');
   const canvas  = section.querySelector('canvas.anim-canvas');
   const ball    = document.getElementById('bball');
   const shadow  = document.getElementById('bball-shadow');
 
-  // ── Size canvas ──────────────────────────────────────────
   const dpr = window.devicePixelRatio || 1;
   canvas.width  = canvas.clientWidth  * dpr;
   canvas.height = canvas.clientHeight * dpr;
@@ -181,7 +179,6 @@ function setupBasket() {
   const W = canvas.clientWidth;
   const H = canvas.clientHeight;
 
-  // ── Rough.js decorations ─────────────────────────────────
   const rc = rough.canvas(canvas);
 
   const groundY    = H * 0.72;
@@ -190,92 +187,87 @@ function setupBasket() {
   const rimCenterY = H * 0.30;
   const rimW       = W * 0.08;
 
-  rc.line(0, groundY, W, groundY, {
-    stroke: '#cf8542', strokeWidth: 1.5, roughness: 0.7,
-  });
-  rc.line(hoopRight, H * 0.10, hoopRight, H * 0.42, {
-    stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 0.9, bowing: 0,
-  });
-  rc.rectangle(hoopRight - W * 0.04, H * 0.14, W * 0.033, H * 0.065, {
-    stroke: '#2b2b2b', strokeWidth: 1.2, roughness: 0.8, fill: 'none',
-  });
-  rc.line(hoopRight - W * 0.02, rimCenterY, rimCenterX + rimW / 2, rimCenterY, {
-    stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 0.8, bowing: 0,
-  });
-  rc.ellipse(rimCenterX, rimCenterY, rimW, rimW * 0.32, {
-    stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 1.0,
-  });
+  rc.line(0, groundY, W, groundY, { stroke: '#cf8542', strokeWidth: 1.5, roughness: 0.7 });
+  rc.line(hoopRight, H * 0.10, hoopRight, H * 0.42, { stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 0.9, bowing: 0 });
+  rc.rectangle(hoopRight - W * 0.04, H * 0.14, W * 0.033, H * 0.065, { stroke: '#2b2b2b', strokeWidth: 1.2, roughness: 0.8, fill: 'none' });
+  rc.line(hoopRight - W * 0.02, rimCenterY, rimCenterX + rimW / 2, rimCenterY, { stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 0.8, bowing: 0 });
+  rc.ellipse(rimCenterX, rimCenterY, rimW, rimW * 0.32, { stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 1.0 });
   const netBase = rimCenterY + H * 0.09;
   const netOpts = { stroke: '#2b2b2b', strokeWidth: 0.9, roughness: 0.7 };
   for (let i = 0; i <= 4; i++) {
-    const fromX  = (rimCenterX - rimW / 2) + (rimW / 4) * i;
-    const drape  = i === 2 ? 0 : i < 2 ? -3 : 3;
+    const fromX = (rimCenterX - rimW / 2) + (rimW / 4) * i;
+    const drape = i === 2 ? 0 : i < 2 ? -3 : 3;
     rc.line(fromX, rimCenterY + 4, fromX + drape, netBase, netOpts);
   }
   rc.line(rimCenterX - rimW / 2 + 3, rimCenterY + H * 0.040, rimCenterX + rimW / 2 - 3, rimCenterY + H * 0.040, netOpts);
   rc.line(rimCenterX - rimW / 2 + 6, rimCenterY + H * 0.065, rimCenterX + rimW / 2 - 6, rimCenterY + H * 0.065, netOpts);
 
-  // ── Matter.js physics ─────────────────────────────────────
-  const engine = Engine.create({ gravity: { y: 1.5 } });
+  // Ball CSS: top:calc(72%-34px), left:8% — center at (W*0.08+17, H*0.72-17)
+  // Drop-in starts above section; GSAP y:0 lands at CSS position.
+  gsap.set(ball,   { y: -H * 0.65, opacity: 0, x: 0, scale: 1, rotation: 0 });
+  gsap.set(shadow, { scaleX: 0.3, opacity: 0 });
 
-  // Ball CSS: top: 22%, left: 8% → center
-  const startX = W * 0.08 + 17;
-  const startY = H * 0.22 + 17;
+  let ready    = false;
+  let shooting = false;
 
-  const ballBody  = Bodies.circle(startX, startY, 17, {
-    isStatic: true, restitution: 0.55, friction: 0.3, frictionAir: 0.01,
-  });
-  const floorBody = Bodies.rectangle(W / 2, groundY + 5, W * 2, 10, { isStatic: true });
-  World.add(engine.world, [ballBody, floorBody]);
+  section.style.cursor = 'crosshair';
 
-  let rafId    = null;
-  let launched = false;
-
-  function updateShadow(bodyY) {
-    const dist = Math.max(0, groundY - bodyY);
-    const maxD = groundY - startY;
-    const t    = 1 - dist / maxD;
-    gsap.set(shadow, { scaleX: 0.25 + t * 1.2, opacity: 0.04 + t * 0.18 });
+  function dropIn() {
+    if (ready || shooting) return;
+    gsap.to(ball, {
+      y: 0, opacity: 1,
+      ease: 'bounce.out', duration: 0.9,
+      onComplete: () => {
+        ready = true;
+        gsap.set(shadow, { scaleX: 0.3, opacity: 0.18 });
+      },
+    });
   }
 
-  function tick() {
-    Engine.update(engine, 1000 / 60);
-    const p = ballBody.position;
-    gsap.set(ball, { x: p.x - startX, y: p.y - startY });
-    updateShadow(p.y);
-    if (p.x > W + 80 || p.y > H + 80) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
-      return;
-    }
-    rafId = requestAnimationFrame(tick);
-  }
-
-  function launch() {
-    if (launched) return;
-    launched = true;
-    Body.setStatic(ballBody, false);
-    // Slight rightward drift; gravity does the drop; bounce sends it toward hoop
-    // Tune x to control how far right ball travels after bounce
-    Body.setVelocity(ballBody, { x: W / 240, y: 1 });
-    tick();
-  }
-
-  function reset() {
-    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-    Body.setStatic(ballBody, true);
-    Body.setPosition(ballBody, { x: startX, y: startY });
-    Body.setVelocity(ballBody, { x: 0, y: 0 });
-    gsap.set(ball,   { x: 0, y: 0 });
-    gsap.set(shadow, { scaleX: 0.3, opacity: 0.04 });
-    launched = false;
+  function dropBack() {
+    ready = false; shooting = false;
+    gsap.killTweensOf(ball);
+    gsap.set(ball,   { x: 0, y: -H * 0.65, scale: 1, opacity: 0, rotation: 0 });
+    gsap.set(shadow, { scaleX: 0.3, opacity: 0 });
   }
 
   ScrollTrigger.create({
-    trigger: section,
-    start: 'top 70%',
-    onEnter:     launch,
-    onLeaveBack: reset,
+    trigger: section, start: 'top 70%',
+    onEnter: dropIn, onLeaveBack: dropBack,
+  });
+
+  section.addEventListener('click', () => {
+    if (!ready || shooting) return;
+    shooting = true;
+    ready = false;
+    section.querySelector('.section__hint')?.classList.add('is-hidden');
+
+    gsap.set(shadow, { opacity: 0 });
+
+    // Ball center at rest: (W*0.08+17, H*0.72-17). Hoop: (W*0.80, H*0.30).
+    const destX = rimCenterX - (W * 0.08 + 17);
+    const destY = rimCenterY - (H * 0.72 - 17);
+    const peakY = destY - H * 0.22;
+
+    const tl = gsap.timeline({
+      onComplete() {
+        gsap.to(ball, {
+          scale: 0.45, opacity: 0, duration: 0.22,
+          onComplete() {
+            setTimeout(() => {
+              gsap.set(ball,   { x: 0, y: -H * 0.65, scale: 1, opacity: 0, rotation: 0 });
+              gsap.set(shadow, { scaleX: 0.3, opacity: 0 });
+              shooting = false;
+              dropIn();
+            }, 400);
+          },
+        });
+      },
+    });
+    tl.to(ball, { x: destX,      ease: 'power1.inOut', duration: 0.65 }, 0);
+    tl.to(ball, { y: peakY,      ease: 'power2.out',   duration: 0.30 }, 0);
+    tl.to(ball, { y: destY,      ease: 'power2.in',    duration: 0.35 }, 0.30);
+    tl.to(ball, { rotation: 360, ease: 'none',         duration: 0.65 }, 0);
   });
 }
 function setupGuitar() {

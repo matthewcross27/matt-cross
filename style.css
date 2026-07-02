@@ -144,8 +144,8 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .basket-ball {
   position: absolute;
   width: 34px; height: 34px;
-  top: 22%; left: 8%;
-  transform-origin: center bottom;
+  top: calc(72% - 34px);
+  left: 8%;
   will-change: transform;
 }
 
