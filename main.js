@@ -143,7 +143,6 @@ function setupSoccer() {
     const rect   = section.getBoundingClientRect();
     const yRatio = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
 
-    // Map click y-position to a vertical aim spot inside the goal
     const aimY  = goalTop + yRatio * gH;
     // Ball CSS: left:20%, top:calc(72%-32px). x/y offsets are relative to that.
     const destX = (goalLeft + gW * 0.5) - W * 0.20;
