@@ -271,10 +271,10 @@ function setupBasket() {
   });
 }
 function setupGuitar() {
-  const section = document.getElementById('sec-guitar');
-  const canvas  = section.querySelector('canvas.anim-canvas');
+  const section   = document.getElementById('sec-guitar');
+  const canvas    = section.querySelector('canvas.anim-canvas');
+  const stringsEl = section.querySelector('.guitar-strings');
 
-  // ── Size canvas ──────────────────────────────────────────
   const dpr = window.devicePixelRatio || 1;
   canvas.width  = canvas.clientWidth  * dpr;
   canvas.height = canvas.clientHeight * dpr;
@@ -283,23 +283,17 @@ function setupGuitar() {
   const W = canvas.clientWidth;
   const H = canvas.clientHeight;
 
-  // ── Rough.js decorations ─────────────────────────────────
   const rc = rough.canvas(canvas);
 
-  // Bridge (where strings anchor at bottom-center)
   const bridgeW = W * 0.10;
   rc.rectangle(W / 2 - bridgeW / 2, H * 0.925, bridgeW, H * 0.022, {
     stroke: '#7d5f86', strokeWidth: 1.2, roughness: 1.4,
     fill: 'rgba(125, 95, 134, 0.06)', fillStyle: 'solid',
   });
-
-  // Nut (thin bar at far left where strings begin)
   rc.rectangle(W * 0.01, H * 0.68, W * 0.005, H * 0.25, {
     stroke: '#7d5f86', strokeWidth: 1.0, roughness: 1.3,
     fill: 'rgba(125, 95, 134, 0.08)', fillStyle: 'solid',
   });
-
-  // Fret position dots — three frets visible
   [0.22, 0.42, 0.60].forEach(pct => {
     rc.circle(W * pct, H * 0.815, 9, {
       stroke: '#7d5f86', strokeWidth: 1.0, roughness: 1.0,
@@ -307,44 +301,75 @@ function setupGuitar() {
     });
   });
 
-  // ── GSAP string vibration ────────────────────────────────
-  const tl = gsap.timeline();
-
   const strings = [
-    { id: 'gstr-1', y: 30,  amp: 20 },
-    { id: 'gstr-2', y: 66,  amp: 26 },
-    { id: 'gstr-3', y: 102, amp: 32 },
-    { id: 'gstr-4', y: 138, amp: 24 },
-    { id: 'gstr-5', y: 170, amp: 16 },
+    { id: 'gstr-1', y: 30,  amp: 20, noteId: '#gnote-1' },
+    { id: 'gstr-2', y: 66,  amp: 26, noteId: '#gnote-2' },
+    { id: 'gstr-3', y: 102, amp: 32, noteId: '#gnote-3' },
+    { id: 'gstr-4', y: 138, amp: 24, noteId: null },
+    { id: 'gstr-5', y: 170, amp: 16, noteId: null },
   ];
 
-  strings.forEach(({ id, y, amp }, i) => {
-    const el     = document.getElementById(id);
-    const offset = i * 0.045;
+  const cooldowns = {};
 
-    // All four path states use identical M C command count — required for GSAP d-interpolation
+  function pluck(s) {
+    if (cooldowns[s.id]) return;
+    cooldowns[s.id] = true;
+
+    const el  = document.getElementById(s.id);
+    const { y, amp } = s;
     const flat    = `M 0 ${y} C 333 ${y}             667 ${y}             1000 ${y}`;
     const peak    = `M 0 ${y} C 333 ${y - amp}       667 ${y + amp}       1000 ${y}`;
     const rebound = `M 0 ${y} C 333 ${y + amp * 0.4} 667 ${y - amp * 0.4} 1000 ${y}`;
     const settle  = `M 0 ${y} C 333 ${y - amp * 0.1} 667 ${y + amp * 0.1} 1000 ${y}`;
 
-    tl.to(el, { attr: { d: peak    }, ease: 'power3.out',   duration: 0.08 }, offset);
-    tl.to(el, { attr: { d: rebound }, ease: 'power3.inOut', duration: 0.12 }, offset + 0.08);
-    tl.to(el, { attr: { d: settle  }, ease: 'power3.inOut', duration: 0.10 }, offset + 0.20);
-    tl.to(el, { attr: { d: flat    }, ease: 'power3.in',    duration: 0.14 }, offset + 0.30);
-  });
+    const tl = gsap.timeline();
+    tl.to(el, { attr: { d: peak    }, ease: 'power3.out',   duration: 0.08 });
+    tl.to(el, { attr: { d: rebound }, ease: 'power3.inOut', duration: 0.12 });
+    tl.to(el, { attr: { d: settle  }, ease: 'power3.inOut', duration: 0.10 });
+    tl.to(el, { attr: { d: flat    }, ease: 'power3.in',    duration: 0.14 });
 
-  tl.fromTo('#gnote-1', { opacity: 0, y: 0 }, { opacity: 0.72, y: -120, ease: 'power1.out', duration: 0.7 }, 0);
-  tl.fromTo('#gnote-2', { opacity: 0, y: 0 }, { opacity: 0.52, y: -140, ease: 'power1.out', duration: 0.7 }, 0.06);
-  tl.fromTo('#gnote-3', { opacity: 0, y: 0 }, { opacity: 0.38, y: -130, ease: 'power1.out', duration: 0.7 }, 0.12);
+    if (s.noteId) {
+      gsap.fromTo(s.noteId,
+        { opacity: 0, y: 0 },
+        { opacity: 0.65, y: -80, ease: 'power1.out', duration: 0.5 },
+      );
+      gsap.to(s.noteId, { opacity: 0, duration: 0.25, delay: 0.35 });
+    }
 
-  ScrollTrigger.create({
-    trigger: section,
-    start: 'top bottom',
-    end: 'bottom top',
-    scrub: 0.4,
-    animation: tl,
+    setTimeout(() => { cooldowns[s.id] = false; }, 350);
+  }
+
+  let lastSvgY = null;
+  let hinted   = false;
+
+  function onCursorY(svgY) {
+    if (lastSvgY === null) { lastSvgY = svgY; return; }
+    strings.forEach(s => {
+      // Fire when cursor crosses from one side of the string's y to the other
+      if ((lastSvgY < s.y && svgY >= s.y) || (lastSvgY > s.y && svgY <= s.y)) {
+        pluck(s);
+        if (!hinted) {
+          hinted = true;
+          section.querySelector('.section__hint')?.classList.add('is-hidden');
+        }
+      }
+    });
+    lastSvgY = svgY;
+  }
+
+  stringsEl.addEventListener('mousemove', e => {
+    const rect = stringsEl.getBoundingClientRect();
+    onCursorY(((e.clientY - rect.top) / rect.height) * 200);
   });
+  stringsEl.addEventListener('mouseleave', () => { lastSvgY = null; });
+
+  stringsEl.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const rect  = stringsEl.getBoundingClientRect();
+    const touch = e.touches[0];
+    onCursorY(((touch.clientY - rect.top) / rect.height) * 200);
+  }, { passive: false });
+  stringsEl.addEventListener('touchend', () => { lastSvgY = null; });
 }
 
 function setupProjectReveal() {
