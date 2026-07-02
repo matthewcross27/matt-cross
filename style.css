@@ -181,6 +181,25 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 em.hero__word { margin-right: 0; font-style: italic; }
 .hero__char { display: inline-block; will-change: transform, opacity; }
 
+/* ── Section interaction hints ──────────────────── */
+.section__hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .16em;
+  color: var(--ink-dim);
+  opacity: 0.45;
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+  transition: opacity 0.5s ease;
+  margin: 0;
+}
+.section__hint.is-hidden { opacity: 0; }
+
 /* ── Projects ──────────────────────────────────── */
 .projects { padding: 80px 24px 100px; max-width: 1000px; margin: 0 auto; }
 .projects__eyebrow {
@@ -267,11 +286,11 @@ em.hero__word { margin-right: 0; font-style: italic; }
   .section__num, .section__title, .section__caption,
   .project-card { clip-path: none !important; }
 
-  /* Hero chars: prevent GSAP from ever leaving them invisible */
   .hero__char { opacity: 1 !important; transform: none !important; }
 
-  /* Hide all decoration layers — canvases, ball elements, strings */
+  /* Hide all decoration and interactive layers */
   .section__anim { display: none; }
+  .section__hint { display: none; }
 
   * { transition-duration: 0.01ms !important; }
 }
