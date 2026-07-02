@@ -151,7 +151,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 
 .basket-shadow {
   position: absolute;
-  top: calc(72% - 5px); left: 44%;
+  top: calc(72% - 5px); left: calc(8% + 17px);
   width: 36px; height: 10px;
   border-radius: 50%;
   background: rgba(43, 43, 43, 0.22);

@@ -20,6 +20,7 @@ function init() {
   if (REDUCED) {
     document.querySelectorAll('.project-card').forEach(el => { el.style.clipPath = 'none'; });
     document.querySelectorAll('.hero__eyebrow, .hero__h1, .hero__sub').forEach(el => { el.style.clipPath = 'none'; });
+    document.querySelectorAll('.section__num, .section__title, .section__caption').forEach(el => { el.style.clipPath = 'none'; });
     document.querySelectorAll('.hero__char').forEach(el => {
       el.style.opacity = '1';
       el.style.transform = 'none';
@@ -31,6 +32,7 @@ function init() {
   setupSoccer();
   setupBasket();
   setupGuitar();
+  setupSectionReveal();
   setupProjectReveal();
 }
 
@@ -165,6 +167,7 @@ function setupSoccer() {
     tl.to(ball, { scale: 0.65, opacity: 0,               duration: 0.18 }, 0.42);
   });
 }
+
 function setupBasket() {
   const section = document.getElementById('sec-basket');
   const canvas  = section.querySelector('canvas.anim-canvas');
@@ -270,6 +273,7 @@ function setupBasket() {
     tl.to(ball, { rotation: 360, ease: 'none',         duration: 0.65 }, 0);
   });
 }
+
 function setupGuitar() {
   const section   = document.getElementById('sec-guitar');
   const canvas    = section.querySelector('canvas.anim-canvas');
@@ -345,7 +349,6 @@ function setupGuitar() {
   function onCursorY(svgY) {
     if (lastSvgY === null) { lastSvgY = svgY; return; }
     strings.forEach(s => {
-      // Fire when cursor crosses from one side of the string's y to the other
       if ((lastSvgY < s.y && svgY >= s.y) || (lastSvgY > s.y && svgY <= s.y)) {
         pluck(s);
         if (!hinted) {
@@ -370,6 +373,21 @@ function setupGuitar() {
     onCursorY(((touch.clientY - rect.top) / rect.height) * 200);
   }, { passive: false });
   stringsEl.addEventListener('touchend', () => { lastSvgY = null; });
+}
+
+function setupSectionReveal() {
+  ['sec-soccer', 'sec-basket', 'sec-guitar'].forEach(id => {
+    const section = document.getElementById(id);
+    const els = section.querySelectorAll('.section__num, .section__title, .section__caption');
+    ScrollTrigger.create({
+      trigger: section,
+      start: 'top 75%',
+      once: true,
+      onEnter() {
+        gsap.to(els, { clipPath: 'inset(0 0 0% 0)', ease: 'power2.out', duration: 0.5, stagger: 0.08 });
+      },
+    });
+  });
 }
 
 function setupProjectReveal() {
