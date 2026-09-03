@@ -1,0 +1,370 @@
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg:        #f1ebdd;
+  --ink:       #2b2b2b;
+  --ink-dim:   rgba(43,43,43,.5);
+  --ink-faint: rgba(43,43,43,.14);
+
+  --soccer:    #6f8f5e;
+  --basket:    #cf8542;
+  --guitar:    #7d5f86;
+  --save:      #b3543f;
+
+  --font-serif: 'EB Garamond', Georgia, serif;
+  --font-mono:  'Space Mono', 'Courier New', monospace;
+
+  --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: auto; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-serif); }
+
+/* ── Grain overlay ─────────────────────────────── */
+.grain {
+  position: fixed; inset: 0; pointer-events: none; z-index: 60;
+  opacity: .055; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Left nav ──────────────────────────────────── */
+.nav {
+  position: fixed; left: 24px; top: 50%; transform: translateY(-50%);
+  z-index: 40; display: flex; gap: 16px; align-items: flex-start;
+}
+.nav__track {
+  position: relative; width: 2px; height: 200px; background: var(--ink-faint);
+}
+.nav__dot {
+  position: absolute; left: -3px; top: 0; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--soccer);
+  transform: translateY(9px);
+  transition: transform .35s var(--ease-out), background .35s ease;
+}
+.nav__labels {
+  display: flex; flex-direction: column; gap: 24px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em;
+  color: var(--ink-dim); line-height: 1.15;
+}
+
+/* ── Hero ──────────────────────────────────────── */
+.hero {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 48px 24px; position: relative;
+}
+.hero__eyebrow {
+  font-family: var(--font-mono); font-size: 12px;
+  letter-spacing: .34em; text-transform: uppercase; color: var(--ink-dim);
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path .7s var(--ease-out);
+}
+.hero__h1 {
+  font-family: var(--font-serif); font-weight: 500;
+  font-size: clamp(46px, 8.5vw, 108px); line-height: .98; margin: 6px 0;
+}
+.hero__sub {
+  font-size: clamp(17px, 2.4vw, 22px); max-width: 520px;
+  color: rgba(43,43,43,.68); margin: 14px auto 0; font-style: italic;
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path .8s .2s var(--ease-out);
+}
+.hero.is-loaded .hero__eyebrow,
+.hero.is-loaded .hero__sub { clip-path: inset(0 0 0% 0); }
+
+.hero__figure { width: 188px; height: auto; margin-top: 28px; }
+.hero__scroll-cue {
+  position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .22em;
+  color: var(--ink-dim); display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+
+/* ── Sections (natural scroll) ────────────────── */
+.section {
+  position: relative;
+  min-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.section__anim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.section__anim canvas.anim-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.section__content {
+  position: relative;
+  z-index: 1;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 80px 24px 0;
+  width: 100%;
+}
+
+.section__header { display: flex; align-items: baseline; gap: 14px; }
+
+.section__num {
+  font-family: var(--font-mono); font-size: clamp(18px, 3vw, 28px);
+  clip-path: inset(0 0 100% 0);
+}
+.section__title {
+  font-family: var(--font-serif); font-weight: 500;
+  font-size: clamp(40px, 7vw, 88px); letter-spacing: -.01em; margin: 0;
+  clip-path: inset(0 0 100% 0);
+}
+.section__caption {
+  font-family: var(--font-mono); font-size: 13px; letter-spacing: .1em;
+  color: var(--ink-dim); max-width: 420px; margin: 10px 0 2px; line-height: 1.6;
+  clip-path: inset(0 0 100% 0);
+}
+
+/* ── Ball elements ──────────────────────────────── */
+.soccer-ball {
+  position: absolute;
+  width: 32px; height: 32px;
+  top: calc(72% - 32px);
+  left: 20%;
+  will-change: transform;
+}
+
+.basket-ball {
+  position: absolute;
+  width: 34px; height: 34px;
+  top: calc(72% - 34px);
+  left: 8%;
+  will-change: transform;
+}
+
+.basket-shadow {
+  position: absolute;
+  top: calc(72% - 5px); left: calc(8% + 17px);
+  width: 36px; height: 10px;
+  border-radius: 50%;
+  background: rgba(43, 43, 43, 0.22);
+  transform: translateX(-50%) scaleX(0.3);
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+/* ── Soccer penalty-kick minigame ───────────────── */
+.soccer-goalie {
+  position: absolute;
+  width: 42px; height: 78px;
+  left: calc(91.5% - 21px);
+  top: calc(55% - 39px);
+  will-change: transform;
+}
+
+.soccer-caption {
+  position: absolute;
+  left: 91.5%; top: 30%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono); font-weight: 700; font-size: 15px; letter-spacing: .06em;
+  opacity: 0; margin: 0; pointer-events: none;
+  transition: opacity .15s ease;
+}
+.soccer-caption.is-goal { opacity: 1; color: var(--soccer); }
+.soccer-caption.is-save { opacity: 1; color: var(--save); }
+
+.soccer-confetti {
+  position: absolute; inset: 0;
+  overflow: visible;
+}
+.confetti-piece {
+  position: absolute;
+  width: 5px; height: 10px; border-radius: 1px;
+  opacity: 0;
+}
+
+/* Real focusable zone buttons, sit outside the aria-hidden .section__anim
+   layer so they stay in the tab order; positioned to match the net's own
+   cross-hatch panes (goal box 86%-97% x, 38%-72% y) drawn on the canvas. */
+.soccer-grid {
+  position: absolute; inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.zone-btn {
+  position: absolute;
+  width: 3.6667%; height: 17%;
+  border: none; background: transparent; padding: 0; margin: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+}
+.zone-btn[data-zone="1"] { left: 86%;     top: 38%; }
+.zone-btn[data-zone="2"] { left: 89.6667%; top: 38%; }
+.zone-btn[data-zone="3"] { left: 93.3333%; top: 38%; }
+.zone-btn[data-zone="4"] { left: 86%;     top: 55%; }
+.zone-btn[data-zone="5"] { left: 89.6667%; top: 55%; }
+.zone-btn[data-zone="6"] { left: 93.3333%; top: 55%; }
+.zone-btn:hover,
+.zone-btn:focus-visible {
+  background: rgba(111,143,94,.12);
+  outline: 1.5px dashed var(--ink-faint);
+  outline-offset: -3px;
+}
+.zone-btn:focus-visible { outline-color: var(--soccer); }
+.zone-btn:disabled { cursor: default; pointer-events: none; }
+.zone-btn span {
+  margin: 3px;
+  font-family: var(--font-mono); font-size: 10px; color: var(--ink-dim);
+  background: rgba(241,235,221,.7); padding: 0 3px; border-radius: 2px;
+}
+
+/* ── Screen-reader-only status text ─────────────── */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ── Guitar overlays (above canvas) ─────────────── */
+.guitar-strings {
+  position: absolute;
+  bottom: 6%; left: 0;
+  width: 100%; height: 32%;
+  z-index: 1;
+}
+
+.guitar-notes {
+  position: absolute;
+  bottom: 14%; left: calc(50% - 60px);
+  width: 120px; height: 200px;
+  overflow: visible;
+  z-index: 1;
+}
+
+/* ── Hero chars ─────────────────────────────────── */
+.hero__word { display: inline-block; margin-right: 0.28em; }
+em.hero__word { margin-right: 0; font-style: italic; }
+.hero__char { display: inline-block; will-change: transform, opacity; }
+
+/* ── Section interaction hints ──────────────────── */
+.section__hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .16em;
+  color: var(--ink-dim);
+  opacity: 0.45;
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+  transition: opacity 0.5s ease;
+  margin: 0;
+}
+.section__hint.is-hidden { opacity: 0; }
+
+/* ── Projects ──────────────────────────────────── */
+.projects { padding: 80px 24px 100px; max-width: 1000px; margin: 0 auto; }
+.projects__eyebrow {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--ink-dim); margin-bottom: 40px;
+}
+.projects__grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;
+}
+.project-card {
+  padding: 28px; position: relative;
+  clip-path: inset(0 0 100% 0);
+}
+.project-card__border {
+  position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+}
+.project-card__border rect { fill: none; stroke: var(--ink); stroke-width: 1.6; opacity: .5; }
+.project-card__label {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--ink-dim); margin-bottom: 8px;
+}
+.project-card__title {
+  font-family: var(--font-serif); font-size: 26px; font-weight: 500;
+  line-height: 1.2; margin: 0 0 10px;
+}
+.project-card__desc {
+  font-size: 16px; color: rgba(43,43,43,.72); line-height: 1.55; margin: 0; font-style: italic;
+}
+.project-card__link {
+  display: inline-block; margin-top: 14px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .16em;
+  color: var(--ink); text-decoration: none; opacity: .5;
+  transition: opacity .2s ease;
+}
+.project-card__link:hover { opacity: 1; }
+
+/* ── Footer ────────────────────────────────────── */
+.footer {
+  min-height: 60vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; padding: 64px 24px; text-align: center;
+}
+.footer__eyebrow {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--ink-dim);
+}
+.footer__email {
+  font-family: var(--font-serif); font-style: italic;
+  font-size: clamp(28px, 5vw, 56px); color: var(--ink);
+  text-decoration: none; border-bottom: 2px solid rgba(43,43,43,.28); padding-bottom: 3px;
+  transition: border-color .2s ease;
+}
+.footer__email:hover { border-color: var(--ink); }
+.footer__links {
+  display: flex; gap: 24px; margin-top: 8px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .18em; color: var(--ink-dim);
+}
+.footer__links a { color: inherit; text-decoration: none; opacity: .6; transition: opacity .2s; }
+.footer__links a:hover { opacity: 1; }
+.footer__tagline {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: .1em; color: rgba(43,43,43,.35); margin-top: 24px;
+}
+
+/* ── Hero animations (off main thread) ─────────── */
+@keyframes bobx { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes cuef { 0%,100% { transform: translateY(0); opacity: .45; } 50% { transform: translateY(7px); opacity: 1; } }
+.hero__figure     { animation: bobx 4s ease-in-out infinite; }
+.hero__scroll-arrow { display: inline-block; animation: cuef 1.7s ease-in-out infinite; }
+
+/* ── Skip link ─────────────────────────────────── */
+.skip-link {
+  position: absolute; top: -40px; left: 0; background: var(--bg); color: var(--ink);
+  padding: 8px 16px; font-family: var(--font-mono); font-size: 12px;
+  text-decoration: none; z-index: 100; transition: top .2s;
+}
+.skip-link:focus { top: 0; }
+
+/* ── Reduced motion ────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .hero__figure, .hero__scroll-arrow { animation: none; }
+
+  .hero__eyebrow, .hero__h1, .hero__sub,
+  .section__num, .section__title, .section__caption,
+  .project-card { clip-path: none !important; }
+
+  .hero__char { opacity: 1 !important; transform: none !important; }
+
+  /* Hide all decoration and interactive layers */
+  .section__anim { display: none; }
+  .section__hint { display: none; }
+  .soccer-grid { display: none; }
+
+  * { transition-duration: 0.01ms !important; }
+}
