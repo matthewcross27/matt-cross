@@ -150,6 +150,14 @@ function setupSoccer() {
     isStatic: true, label: 'goalie',
   });
   World.add(engine.world, goalieBody);
+  // Save-bounce ball needs somewhere to land, or gravity keeps it falling
+  // past the drawn ground line and off the clipped canvas (design.html
+  // section 06: the ball "drops to the ground", i.e. rests on it).
+  const groundY = H * 0.72;
+  const groundBody = Bodies.rectangle(W / 2, groundY + 20, W * 3, 40, {
+    isStatic: true, label: 'ground', restitution: 0.35, friction: 0.6,
+  });
+  World.add(engine.world, groundBody);
 
   const setBallX = gsap.quickSetter(ball, 'x', 'px');
   const setBallY = gsap.quickSetter(ball, 'y', 'px');
