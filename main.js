@@ -74,9 +74,14 @@ function setupHeroEntrance() {
   });
 }
 function setupSoccer() {
-  const section = document.getElementById('sec-soccer');
-  const canvas  = section.querySelector('canvas.anim-canvas');
-  const ball    = document.getElementById('bsoc');
+  const section      = document.getElementById('sec-soccer');
+  const canvas       = section.querySelector('canvas.anim-canvas');
+  const ball         = document.getElementById('bsoc');
+  const goalie       = document.getElementById('soc-goalie');
+  const caption      = document.getElementById('soc-caption');
+  const confettiLayer = document.getElementById('soc-confetti');
+  const statusEl     = document.getElementById('soc-status');
+  const zoneBtns     = Array.from(section.querySelectorAll('.zone-btn'));
 
   const dpr = window.devicePixelRatio || 1;
   canvas.width  = canvas.clientWidth  * dpr;
@@ -108,25 +113,142 @@ function setupSoccer() {
   rc.line(goalLeft + gW * 0.33, goalTop,             goalLeft + gW * 0.33, goalBottom, netOpts);
   rc.line(goalLeft + gW * 0.66, goalTop,             goalLeft + gW * 0.66, goalBottom, netOpts);
 
-  // CSS left:20% means ball rests at W*0.20 from left. Push off-screen with negative x.
+  // The 6 shot zones are the net's own cross-hatch panes, not a bolted-on
+  // overlay grid (design.html section 04). Numbering is reading order,
+  // top-left to bottom-right, and doubles as the goalie's target index.
+  const ZONES = {};
+  [1, 2, 3].forEach((zone, i) => {
+    ZONES[zone] = { x: goalLeft + gW * (i + 0.5) / 3, y: goalTop + gH * 0.25 };
+  });
+  [4, 5, 6].forEach((zone, i) => {
+    ZONES[zone] = { x: goalLeft + gW * (i + 0.5) / 3, y: goalTop + gH * 0.75 };
+  });
+
+  // CSS: ball is 32px, left:20%, top:calc(72% - 32px) -> its center at rest.
+  const BALL_START  = { x: W * 0.20 + 16, y: H * 0.72 - 16 };
+  // CSS: .soccer-goalie sits centered on the goal box (calc(91.5% - 21px) etc).
+  const GOALIE_REST = { x: goalLeft + gW * 0.5, y: goalTop + gH * 0.5 };
+
+  // ---- Matter.js world ----
+  // Physics renders the outcome, it never decides it: save vs. goal is
+  // settled by comparing the two zone picks the instant the shot commits
+  // (see commitShot below). Matter.js only owns the save-bounce, since
+  // that's the one motion that needs real collision response - a goal has
+  // nothing to collide with, so its flight is a direct tween further down
+  // (design.html section 06, "Revised after review"; a free-flight physics
+  // goal path was tried, found to fly through the goal with nothing to stop
+  // it, and replaced with the direct tween for exactly that reason).
+  const { Engine, Bodies, Body, World } = Matter;
+  const physicsScale = W / 640; // gravity/speed tuned against a 640px reference stage
+  const engine = Engine.create({ gravity: { x: 0, y: 0.55 * physicsScale } });
+  const ballBody = Bodies.circle(BALL_START.x, BALL_START.y, 16, {
+    restitution: 0.55, friction: 0.05, frictionAir: 0, label: 'ball',
+  });
+  Body.setStatic(ballBody, true);
+  World.add(engine.world, ballBody);
+  const goalieBody = Bodies.rectangle(GOALIE_REST.x, GOALIE_REST.y, 42, 78, {
+    isStatic: true, label: 'goalie',
+  });
+  World.add(engine.world, goalieBody);
+
+  const setBallX = gsap.quickSetter(ball, 'x', 'px');
+  const setBallY = gsap.quickSetter(ball, 'y', 'px');
+
   gsap.set(ball, { x: -(W * 0.20 + 36), y: 0, rotation: 0, scale: 1, opacity: 1 });
 
   let ready    = false;
   let shooting = false;
+  let rafId       = null;
+  let ballTween   = null;
+  let resolveTimer = null;
+  let resetTimer   = null;
 
-  section.style.cursor = 'crosshair';
+  function setGridEnabled(enabled) {
+    zoneBtns.forEach(btn => { btn.disabled = !enabled; });
+  }
+  setGridEnabled(false);
+
+  function diveGoalie(zone) {
+    const t = ZONES[zone];
+    const topRow = zone <= 3;
+    anime.animate(goalie, {
+      translateX: t.x - GOALIE_REST.x,
+      translateY: t.y - GOALIE_REST.y,
+      rotate: topRow ? -10 : 10,
+      scaleY: topRow ? 1.06 : 0.9,
+      duration: 380,
+      ease: 'outQuad',
+    });
+  }
+
+  function resetGoalie() {
+    anime.remove(goalie);
+    anime.animate(goalie, {
+      translateX: 0, translateY: 0, rotate: 0, scaleY: 1,
+      duration: 280, ease: 'outQuad',
+    });
+  }
+
+  function burstConfetti(atZone) {
+    confettiLayer.innerHTML = '';
+    const colors = [...ACCENTS, '#2b2b2b'];
+    const origin = ZONES[atZone];
+    const pieces = [];
+    for (let i = 0; i < 28; i++) {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.style.left = origin.x + 'px';
+      el.style.top  = origin.y + 'px';
+      el.style.background = colors[i % colors.length];
+      confettiLayer.appendChild(el);
+      pieces.push(el);
+    }
+    anime.animate(pieces, {
+      translateX: () => anime.utils.random(-90, 90),
+      translateY: () => anime.utils.random(50, 150),
+      rotate: () => anime.utils.random(-180, 180),
+      opacity: [1, 0],
+      duration: () => anime.utils.random(650, 950),
+      delay: anime.stagger(6),
+      ease: 'outCubic',
+    });
+  }
+
+  function physicsLoop() {
+    Engine.update(engine, 1000 / 60);
+    setBallX(ballBody.position.x - BALL_START.x);
+    setBallY(ballBody.position.y - BALL_START.y);
+    rafId = requestAnimationFrame(physicsLoop);
+  }
+
+  function stopAllMotion() {
+    clearTimeout(resolveTimer);
+    clearTimeout(resetTimer);
+    cancelAnimationFrame(rafId);
+    if (ballTween && ballTween.pause) ballTween.pause();
+    anime.remove(goalie);
+    goalie.style.transform = '';
+  }
 
   function rollIn() {
     if (ready || shooting) return;
     gsap.to(ball, {
       x: 0, rotation: -180,
       ease: 'power2.out', duration: 0.6,
-      onComplete: () => { ready = true; },
+      onComplete: () => { ready = true; setGridEnabled(true); },
     });
   }
 
   function rollBack() {
     ready = false; shooting = false;
+    setGridEnabled(false);
+    stopAllMotion();
+    Body.setStatic(ballBody, true);
+    Body.setPosition(ballBody, BALL_START);
+    Body.setVelocity(ballBody, { x: 0, y: 0 });
+    caption.className = 'soccer-caption';
+    caption.textContent = '';
+    statusEl.textContent = '';
     gsap.killTweensOf(ball);
     gsap.set(ball, { x: -(W * 0.20 + 36), y: 0, scale: 1, opacity: 1, rotation: 0 });
   }
@@ -136,35 +258,87 @@ function setupSoccer() {
     onEnter: rollIn, onLeaveBack: rollBack,
   });
 
-  section.addEventListener('click', e => {
+  function scheduleReset() {
+    resetTimer = setTimeout(() => {
+      cancelAnimationFrame(rafId);
+      if (ballTween && ballTween.pause) ballTween.pause();
+      Body.setStatic(ballBody, false);
+      Body.setPosition(ballBody, BALL_START);
+      Body.setVelocity(ballBody, { x: 0, y: 0 });
+      Body.setStatic(ballBody, true);
+      gsap.set(ball, { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1 });
+      resetGoalie();
+      caption.className = 'soccer-caption';
+      caption.textContent = '';
+      statusEl.textContent = '';
+      shooting = false;
+      ready = true;
+      setGridEnabled(true);
+    }, 550);
+  }
+
+  function commitShot(playerZone) {
     if (!ready || shooting) return;
     shooting = true;
     ready = false;
+    setGridEnabled(false);
     section.querySelector('.section__hint')?.classList.add('is-hidden');
 
-    const rect   = section.getBoundingClientRect();
-    const yRatio = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    const goalieZone = 1 + Math.floor(Math.random() * 6);
+    const isSave = goalieZone === playerZone;
 
-    const aimY  = goalTop + yRatio * gH;
-    // Ball CSS: left:20%, top:calc(72%-32px). x/y offsets are relative to that.
-    const destX = (goalLeft + gW * 0.5) - W * 0.20;
-    const destY = aimY - (H * 0.72 - 32);
-    const arcY  = destY - H * 0.22;
+    diveGoalie(goalieZone);
+    Body.setPosition(goalieBody, ZONES[goalieZone]);
 
-    const tl = gsap.timeline({
-      onComplete() {
-        setTimeout(() => {
-          gsap.set(ball, { x: -(W * 0.20 + 36), y: 0, scale: 1, opacity: 1, rotation: 0 });
-          shooting = false;
-          rollIn();
-        }, 500);
-      },
+    const aim = ZONES[playerZone];
+
+    if (isSave) {
+      // Real Matter.js flight + collision: the ball's actual bounce off the
+      // goalie is the point here, so physics owns the whole motion.
+      Body.setStatic(ballBody, false);
+      Body.setPosition(ballBody, BALL_START);
+      const dx = aim.x - BALL_START.x, dy = aim.y - BALL_START.y;
+      const dist = Math.hypot(dx, dy);
+      const speed = 15 * physicsScale;
+      Body.setVelocity(ballBody, { x: dx / dist * speed, y: dy / dist * speed - 3.5 * physicsScale });
+      cancelAnimationFrame(rafId);
+      physicsLoop();
+    } else {
+      // A goal has nothing to collide with, so drive the ball straight to
+      // the chosen zone: it lands exactly where aimed, every time, by
+      // construction rather than by tuning gravity/speed to arrive there.
+      if (ballTween && ballTween.pause) ballTween.pause();
+      ballTween = anime.animate(ball, {
+        translateX: aim.x - BALL_START.x,
+        translateY: aim.y - BALL_START.y,
+        duration: 460,
+        ease: 'outQuad',
+      });
+    }
+
+    resolveTimer = setTimeout(() => {
+      if (isSave) {
+        caption.className = 'soccer-caption is-save';
+        caption.textContent = 'SAVED';
+        statusEl.textContent = 'Saved - the keeper dove the right way.';
+        resetTimer = setTimeout(scheduleReset, 700);
+      } else {
+        caption.className = 'soccer-caption is-goal';
+        caption.textContent = 'GOAL!';
+        statusEl.textContent = 'Goal!';
+        burstConfetti(playerZone);
+        resetTimer = setTimeout(() => {
+          ball.style.opacity = '0';
+          scheduleReset();
+        }, 250);
+      }
+    }, 500);
+  }
+
+  zoneBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      commitShot(parseInt(btn.getAttribute('data-zone'), 10));
     });
-    tl.to(ball, { x: destX,          ease: 'power2.out', duration: 0.55 }, 0);
-    tl.to(ball, { y: arcY,           ease: 'power2.out', duration: 0.27 }, 0);
-    tl.to(ball, { y: destY,          ease: 'power2.in',  duration: 0.28 }, 0.27);
-    tl.to(ball, { rotation: '-=540', ease: 'none',       duration: 0.55 }, 0);
-    tl.to(ball, { scale: 0.65, opacity: 0,               duration: 0.18 }, 0.42);
   });
 }
 

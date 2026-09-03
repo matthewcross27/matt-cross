@@ -74,6 +74,16 @@
   <section id="sec-soccer" class="section" aria-label="Soccer">
     <div class="section__anim" aria-hidden="true">
       <canvas class="anim-canvas"></canvas>
+      <div class="soccer-goalie" id="soc-goalie">
+        <svg viewBox="-30 -55 60 110" width="100%" height="100%">
+          <circle cx="0" cy="-38" r="9" fill="none" stroke="#2b2b2b" stroke-width="2.5"/>
+          <line x1="0" y1="-29" x2="0" y2="10" stroke="#2b2b2b" stroke-width="2.5"/>
+          <line x1="0" y1="-18" x2="-22" y2="-30" stroke="#2b2b2b" stroke-width="2.5"/>
+          <line x1="0" y1="-18" x2="22" y2="-30" stroke="#2b2b2b" stroke-width="2.5"/>
+          <line x1="0" y1="10" x2="-14" y2="45" stroke="#2b2b2b" stroke-width="2.5"/>
+          <line x1="0" y1="10" x2="14" y2="45" stroke="#2b2b2b" stroke-width="2.5"/>
+        </svg>
+      </div>
       <div class="soccer-ball" id="bsoc">
         <svg viewBox="-14 -14 28 28" width="100%" height="100%">
           <circle cx="0" cy="0" r="12" fill="#f1ebdd" stroke="#2b2b2b" stroke-width="2.5"/>
@@ -82,7 +92,18 @@
           <line x1="0"  y1="7"  x2="0" y2="12" stroke="#2b2b2b" stroke-width="1.5"/>
         </svg>
       </div>
+      <p class="soccer-caption" id="soc-caption"></p>
+      <div class="soccer-confetti" id="soc-confetti"></div>
     </div>
+    <div class="soccer-grid" id="soc-grid" data-state="idle" role="group" aria-label="Choose a shot zone">
+      <button class="zone-btn" type="button" data-zone="1" aria-label="Aim top left"><span aria-hidden="true">1</span></button>
+      <button class="zone-btn" type="button" data-zone="2" aria-label="Aim top center"><span aria-hidden="true">2</span></button>
+      <button class="zone-btn" type="button" data-zone="3" aria-label="Aim top right"><span aria-hidden="true">3</span></button>
+      <button class="zone-btn" type="button" data-zone="4" aria-label="Aim bottom left"><span aria-hidden="true">4</span></button>
+      <button class="zone-btn" type="button" data-zone="5" aria-label="Aim bottom center"><span aria-hidden="true">5</span></button>
+      <button class="zone-btn" type="button" data-zone="6" aria-label="Aim bottom right"><span aria-hidden="true">6</span></button>
+    </div>
+    <p class="sr-only" id="soc-status" aria-live="polite"></p>
     <div class="section__content">
       <div class="section__header">
         <span class="section__num" style="color:var(--soccer)">01</span>
@@ -90,7 +111,7 @@
       </div>
       <p class="section__caption">[ a line about what the pitch means to you ]</p>
     </div>
-    <p class="section__hint" aria-hidden="true">click anywhere to shoot</p>
+    <p class="section__hint" aria-hidden="true">pick a zone to shoot</p>
   </section>
 
   <section id="sec-basket" class="section" aria-label="Basketball">
@@ -200,6 +221,12 @@
         integrity="sha384-Z3REaz79l2IaAZqJsSABtTbhjgOUYyV3p90XNnAPCSHg3EMTz1fouunq9WZRtj3d"
         crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.min.js" integrity="sha384-rvEjR85HduidawDBR0uRyGb+TbNBzSPDPOYWWom7LyPTmZXv2OztrBvPBvmn17XN" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"
+        integrity="sha384-OqQP3UcU7efkEYDRjGmQou2uEvzGFGRtwdYXTjnupeB9cWogSgQ4BOhyklFBYbBR"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/bundles/anime.umd.min.js"
+        integrity="sha384-InMmvD3VoYcY7hGjSC80aLb2bNNE4CzpX+Eq6FVDlmB0IKgDvmfPw4UY8L/M++iG"
+        crossorigin="anonymous"></script>
 <script src="main.js"></script>
 </body>
 </html>
