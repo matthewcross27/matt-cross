@@ -60,14 +60,21 @@ was PR #1's shipped version, later replaced. Two sharp edges if you touch this s
 
 ## Scroll-scrub performance: GSAP + SVG attribute transforms are expensive per-frame
 
-Verified directly (a minimal isolated repro, not just this codebase): GSAP always writes
-SVG `<g>`/`<path>` transforms via the `transform` *attribute*, never CSS `transform`
-*style* - unaffected by `transformOrigin`. Each attribute write triggers Blink's
-SVG-specific layout invalidation; fine for a one-off tween, measurably costly (profiled
-with Chrome tracing: ~50% dropped frames) for anything transformed on every scrub frame
-across a whole scroll range, as soccer's captain-reported laggy-scroll fix found. Three
-reusable helpers in `main.js` exist for the next scroll-scrub section to build on rather
-than re-discovering this:
+Verified directly (a minimal isolated repro, not just this codebase, and independent of
+any specific measurement): GSAP always writes SVG `<g>`/`<path>` transforms via the
+`transform` *attribute*, never CSS `transform` *style* - unaffected by `transformOrigin`.
+Each attribute write triggers Blink's SVG-specific layout invalidation; fine for a one-off
+tween, but a real, reproducible cost for anything transformed on every scrub frame across
+a whole scroll range, as soccer's captain-reported laggy-scroll fix found. The specific
+frame-drop/stall percentages recorded while diagnosing that fix (Chrome tracing, ~50%
+dropped frames before / none after) were measured in this project's headless, GPU-less
+sandbox and should be read as evidence *of this sandbox*, not a portable benchmark - a
+later independent verification pass in the same kind of sandbox couldn't reproduce the
+exact numbers, though it did directly confirm the underlying attribute-vs-style mechanism
+switch by inspecting the DOM before/after. Trust the mechanism, not the exact percentages,
+when judging whether a similar fix is warranted elsewhere. Three reusable helpers in
+`main.js` exist for the next scroll-scrub section to build on rather than re-discovering
+this:
 - `svgTransformDriver(el)` - tween a plain proxy object and apply the result via the
   element's CSS `transform` style in `onUpdate`, instead of letting GSAP set `x`/`y` on
   the element directly. Used for soccer's ball/crowd/pitch groups (translate and, for the
