@@ -72,7 +72,7 @@ sandbox and should be read as evidence *of this sandbox*, not a portable benchma
 later independent verification pass in the same kind of sandbox couldn't reproduce the
 exact numbers, though it did directly confirm the underlying attribute-vs-style mechanism
 switch by inspecting the DOM before/after. Trust the mechanism, not the exact percentages,
-when judging whether a similar fix is warranted elsewhere. Three reusable helpers in
+when judging whether a similar fix is warranted elsewhere. Four reusable helpers in
 `main.js` exist for the next scroll-scrub section to build on rather than re-discovering
 this:
 - `svgTransformDriver(el)` - tween a plain proxy object and apply the result via the
@@ -85,6 +85,13 @@ this:
   trigger/endTrigger/`pin:false` wiring for a CSS-`position:sticky`-pinned section (CSS
   does the pinning; GSAP only scrubs the timeline against the scroll range the section's
   extra height provides).
+- `hermiteSpline(knots)` - given `[{t, v}, ...]` sorted by `t`, returns a function of
+  scroll fraction that evaluates a clamped cubic Hermite spline through every knot, with
+  matched value *and* velocity at each interior knot by construction. Use this instead of
+  chaining several GSAP `.to()` tweens between named poses whenever a scrub-driven value
+  must pass through more than two known points - a per-segment-eased tween chain only
+  guarantees continuous value at the boundaries, not continuous velocity (see the "Update"
+  note below for the kicker-figure bug this caused).
 Also avoid animating non-transform/opacity properties (e.g. `stroke-dashoffset`) or doing
 non-trivial DOM writes (e.g. a rough.js redraw) on every scrub frame or on a timer that
 can overlap active scrolling - `settleRedraw()` was cut from 3 passes to 1 for exactly
