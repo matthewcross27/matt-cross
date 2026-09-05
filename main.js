@@ -89,7 +89,7 @@ function buildKicker(svg, restPt) {
   const NS = 'http://www.w3.org/2000/svg';
   const rc = rough.svg(svg);
   const STROKE = { stroke: '#2b2b2b', roughness: 1.3, bowing: 0.7 };
-  const LEN = { torso: 30, thigh: 24, shin: 22, foot: 11, upperArm: 15, forearm: 13 };
+  const LEN = { torso: 30, neck: 10, thigh: 24, shin: 22, foot: 11, upperArm: 15, forearm: 13 };
   const hip = { x: restPt.x - 30, y: restPt.y - 24 };
 
   const root = document.createElementNS(NS, 'g');
@@ -123,13 +123,19 @@ function buildKicker(svg, restPt) {
   }
 
   const torso = seg(root, LEN.torso, { strokeWidth: 2.4 });
-  const headAnchor = anchorAt(torso, LEN.torso, 0);
-  headAnchor.appendChild(rc.circle(0, 0, 17, Object.assign({}, STROKE, { fill: 'none', strokeWidth: 1.7 })));
   const shoulder = anchorAt(torso, LEN.torso * 0.86, 0);
   const armBack = arm(shoulder);
   const armFront = arm(shoulder);
   const legPlant = leg();
   const legKick = leg();
+  // Head anchored beyond the torso tip (torso length + a neck gap, not at
+  // the tip itself) and appended after the shoulder/arms - previously it sat
+  // almost exactly at the shoulder point and, being appended first, painted
+  // *behind* the arms (SVG paints in document order). Captain review: head
+  // must read as clearly above the shoulders/arms, at rest and through the
+  // kick.
+  const headAnchor = anchorAt(torso, LEN.torso + LEN.neck, 0);
+  headAnchor.appendChild(rc.circle(0, 0, 17, Object.assign({}, STROKE, { fill: 'none', strokeWidth: 1.7 })));
 
   const joints = {
     torso: torso,
@@ -153,6 +159,42 @@ function applyPose(tl, joints, pose, at, duration, ease) {
   Object.keys(pose).forEach(function (k) {
     tl.to(joints[k], { rotation: pose[k], duration: duration, ease: ease }, at);
   });
+}
+
+// Common shape for a pinned scroll-scrub section: `stage` is the CSS
+// position:sticky element (pinning itself is CSS's job, see .section--pinned
+// in style.css - GSAP only scrubs a timeline against the scroll range the
+// section's extra height provides, it never pins). Centralizing the
+// trigger/endTrigger/pin:false wiring here means the next scroll-scrub
+// section (basketball/guitar are next) reuses this instead of re-deriving
+// it, and reuses `svgTransformDriver` below for whatever it animates
+// continuously rather than re-discovering the SVG-attribute cost.
+function createPinnedScrub(section, stage, vars) {
+  return gsap.timeline({
+    scrollTrigger: Object.assign({
+      trigger: stage, start: 'top top',
+      endTrigger: section, end: 'bottom bottom',
+      scrub: 0.35, pin: false,
+    }, vars),
+  });
+}
+
+// GSAP always writes SVG <g>/<path> transforms via the `transform` *attribute*
+// (confirmed directly against this GSAP version - unaffected by transformOrigin),
+// which triggers Blink's SVG-specific layout invalidation on every write. That's
+// cheap for a one-off tween but measurably costly for something transformed on
+// every scrub frame throughout a scroll (profiled while diagnosing scroll jank
+// here - see AGENTS.md). Tweening a plain proxy object instead and applying the
+// result through the element's CSS `transform` *style* keeps continuous
+// scrub-driven position updates on the compositor-only transform path. Reusable
+// for any future scroll-scrub section that continuously repositions an element.
+function svgTransformDriver(el) {
+  const state = { x: 0, y: 0 };
+  function apply() {
+    el.style.transform = 'translate(' + state.x + 'px,' + state.y + 'px)';
+  }
+  apply();
+  return { state: state, apply: apply };
 }
 
 function buildSoccerScene(svg) {
@@ -212,12 +254,12 @@ function buildSoccerScene(svg) {
 }
 
 function settleRedraw(scene) {
-  let n = 0;
-  const timer = setInterval(() => {
-    scene.redrawPitch();
-    n++;
-    if (n >= 3) clearInterval(timer);
-  }, 180);
+  // Was 3 rough.js redraw passes (~180ms apart) for a "hand still sketching"
+  // effect; profiling during a captain-reported scroll-jank fix showed each
+  // pass (full rough.js regeneration + wobble-filter recompute) landing
+  // squarely mid-scroll and dropping frames. One pass still gives a visible
+  // redraw moment at a fraction of the cost.
+  scene.redrawPitch();
 }
 
 function impactFlourish(svg, point, color) {
@@ -273,7 +315,12 @@ function setupSoccer() {
   const restPt = path.getPointAtLength(0);
   trail.style.strokeDasharray = len;
   trail.style.strokeDashoffset = len;
-  gsap.set(ball, { x: restPt.x, y: restPt.y });
+  const ballDrv = svgTransformDriver(ball);
+  const crowdDrv = svgTransformDriver(crowd);
+  const pitchDrv = svgTransformDriver(pitch);
+  ballDrv.state.x = restPt.x;
+  ballDrv.state.y = restPt.y;
+  ballDrv.apply();
   const kicker = buildKicker(svg, restPt);
 
   // Captain review finding: the ball must never start its flight before the
@@ -289,19 +336,12 @@ function setupSoccer() {
   let redrawnAt = null;
   let flourished = false;
 
-  const tl = gsap.timeline({
-    scrollTrigger: {
-      trigger: stage, start: 'top top',
-      endTrigger: section, end: 'bottom bottom',
-      // CSS position:sticky (see .section--pinned in style.css) already
-      // pins the stage; GSAP only scrubs the timeline, it never pins.
-      scrub: 0.35, pin: false,
-      onUpdate(self) {
-        if (redrawnAt === null && self.progress > REDRAW_AT) { redrawnAt = self.progress; settleRedraw(scene); }
-        if (self.progress < REDRAW_AT - 0.1) { redrawnAt = null; }
-        if (!flourished && self.progress > 0.97) { flourished = true; impactFlourish(svg, impactPoint, '#6f8f5e'); netPulse(svg); }
-        if (self.progress < 0.9) { flourished = false; }
-      },
+  const tl = createPinnedScrub(section, stage, {
+    onUpdate(self) {
+      if (redrawnAt === null && self.progress > REDRAW_AT) { redrawnAt = self.progress; settleRedraw(scene); }
+      if (self.progress < REDRAW_AT - 0.1) { redrawnAt = null; }
+      if (!flourished && self.progress > 0.97) { flourished = true; impactFlourish(svg, impactPoint, '#6f8f5e'); netPulse(svg); }
+      if (self.progress < 0.9) { flourished = false; }
     },
   });
 
@@ -310,11 +350,11 @@ function setupSoccer() {
   applyPose(tl, kicker.joints, KICK_POSES.follow, CONTACT_T, 0.06, 'power2.out');
   tl.to(kicker.root, { opacity: 0, duration: 0.08, ease: 'power1.in' }, 0.20);
 
-  tl.to(ball, { motionPath: { path: path, start: 0, end: 1, autoRotate: false }, ease: 'none', duration: FLIGHT_D }, CONTACT_T);
+  tl.to(ballDrv.state, { motionPath: { path: path, start: 0, end: 1, autoRotate: false }, ease: 'none', duration: FLIGHT_D, onUpdate: ballDrv.apply }, CONTACT_T);
   tl.to(trail, { strokeDashoffset: 0, ease: 'none', duration: FLIGHT_D }, CONTACT_T);
   tl.to(shadow, { opacity: 0.05, ease: 'none', duration: FLIGHT_D * 0.75 }, CONTACT_T);
-  tl.to(crowd, { x: -22, ease: 'none', duration: 1 }, 0);
-  tl.to(pitch, { x: -8, ease: 'none', duration: 1 }, 0);
+  tl.to(crowdDrv.state, { x: -22, ease: 'none', duration: 1, onUpdate: crowdDrv.apply }, 0);
+  tl.to(pitchDrv.state, { x: -8, ease: 'none', duration: 1, onUpdate: pitchDrv.apply }, 0);
 }
 
 function setupBasket() {

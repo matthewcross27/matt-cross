@@ -157,6 +157,14 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   width: 100%;
   height: 100%;
 }
+/* GSAP always writes SVG transforms via the transform *attribute*, never CSS
+   style (verified: it does this even with a pixel transformOrigin) - which
+   triggers Blink's per-write SVG layout invalidation. Promoting these
+   scrub-driven groups to their own compositor layer keeps that invalidation
+   scoped to the layer instead of cascading into a full-page layout/paint. */
+.ball-group, .layer-crowd, .layer-pitch, .kicker-figure {
+  will-change: transform;
+}
 
 /* ── Ball elements ──────────────────────────────── */
 .basket-ball {

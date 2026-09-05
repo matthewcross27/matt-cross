@@ -55,7 +55,30 @@ was PR #1's shipped version, later replaced. Two sharp edges if you touch this s
   retime the kick poses, keep every ball/trail/shadow tween's start gated to that same
   constant rather than to timeline `0`.
 - Basketball and guitar are intentionally still the older click/hover minigame pattern;
-  this decorative-accent direction is not yet extended to them.
+  this decorative-accent direction is not yet extended to them, but should reuse the
+  performance patterns below when it is.
+
+## Scroll-scrub performance: GSAP + SVG attribute transforms are expensive per-frame
+
+Verified directly (a minimal isolated repro, not just this codebase): GSAP always writes
+SVG `<g>`/`<path>` transforms via the `transform` *attribute*, never CSS `transform`
+*style* - unaffected by `transformOrigin`. Each attribute write triggers Blink's
+SVG-specific layout invalidation; fine for a one-off tween, measurably costly (profiled
+with Chrome tracing: ~50% dropped frames) for anything transformed on every scrub frame
+across a whole scroll range, as soccer's captain-reported laggy-scroll fix found. Two
+reusable helpers in `main.js` exist for the next scroll-scrub section to build on rather
+than re-discovering this:
+- `svgTransformDriver(el)` - tween a plain proxy object and apply the result via the
+  element's CSS `transform` style in `onUpdate`, instead of letting GSAP set `x`/`y` on
+  the element directly. Used for soccer's ball/crowd/pitch groups.
+- `createPinnedScrub(section, stage, vars)` - the shared ScrollTrigger
+  trigger/endTrigger/`pin:false` wiring for a CSS-`position:sticky`-pinned section (CSS
+  does the pinning; GSAP only scrubs the timeline against the scroll range the section's
+  extra height provides).
+Also avoid animating non-transform/opacity properties (e.g. `stroke-dashoffset`) or doing
+non-trivial DOM writes (e.g. a rough.js redraw) on every scrub frame or on a timer that
+can overlap active scrolling - `settleRedraw()` was cut from 3 passes to 1 for exactly
+this reason.
 
 ## Maintaining this file
 
