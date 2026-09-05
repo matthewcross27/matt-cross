@@ -133,15 +133,40 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   clip-path: inset(0 0 100% 0);
 }
 
-/* ── Ball elements ──────────────────────────────── */
-.soccer-ball {
+/* ── Pinned scroll-scrub sections (soccer decorative accent) ────
+   A taller-than-viewport section whose .section__anim and
+   .section__content both go position:sticky top:0, so both stick
+   together while the section's own extra height supplies the scroll
+   range main.js's ScrollTrigger scrub reads from - see setupSoccer(). ── */
+.section--pinned {
+  min-height: 240vh;
+  /* position:sticky below is inert if any ancestor (including .section's own
+     base overflow:hidden) has overflow other than visible - .section__anim's
+     own overflow:hidden still contains the scene inside its 100vh box. */
+  overflow: visible;
+}
+.section--pinned .section__anim {
+  position: sticky;
+  inset: auto;
+  top: 0;
+  height: 100vh;
+}
+.section--pinned .section__content {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.soccer-scene {
   position: absolute;
-  width: 32px; height: 32px;
-  top: calc(72% - 32px);
-  left: 20%;
-  will-change: transform;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
+/* ── Ball elements ──────────────────────────────── */
 .basket-ball {
   position: absolute;
   width: 34px; height: 34px;
@@ -161,79 +186,8 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   will-change: transform, opacity;
 }
 
-/* ── Soccer penalty-kick minigame ───────────────── */
-.soccer-goalie {
-  position: absolute;
-  width: 42px; height: 78px;
-  left: calc(91.5% - 21px);
-  top: calc(55% - 39px);
-  will-change: transform;
-}
-
-.soccer-caption {
-  position: absolute;
-  left: 91.5%; top: 30%;
-  transform: translate(-50%, -50%);
-  font-family: var(--font-mono); font-weight: 700; font-size: 15px; letter-spacing: .06em;
-  opacity: 0; margin: 0; pointer-events: none;
-  transition: opacity .15s ease;
-}
-.soccer-caption.is-goal { opacity: 1; color: var(--soccer); }
-.soccer-caption.is-save { opacity: 1; color: var(--save); }
-
-.soccer-confetti {
-  position: absolute; inset: 0;
-  overflow: visible;
-}
-.confetti-piece {
-  position: absolute;
-  width: 5px; height: 10px; border-radius: 1px;
-  opacity: 0;
-}
-
-/* Real focusable zone buttons, sit outside the aria-hidden .section__anim
-   layer so they stay in the tab order; positioned to match the net's own
-   cross-hatch panes (goal box 86%-97% x, 38%-72% y) drawn on the canvas. */
-.soccer-grid {
-  position: absolute; inset: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-.zone-btn {
-  position: absolute;
-  width: 3.6667%; height: 17%;
-  border: none; background: transparent; padding: 0; margin: 0;
-  cursor: pointer;
-  pointer-events: auto;
-  display: flex; align-items: flex-start; justify-content: flex-start;
-}
-.zone-btn[data-zone="1"] { left: 86%;     top: 38%; }
-.zone-btn[data-zone="2"] { left: 89.6667%; top: 38%; }
-.zone-btn[data-zone="3"] { left: 93.3333%; top: 38%; }
-.zone-btn[data-zone="4"] { left: 86%;     top: 55%; }
-.zone-btn[data-zone="5"] { left: 89.6667%; top: 55%; }
-.zone-btn[data-zone="6"] { left: 93.3333%; top: 55%; }
-.zone-btn:hover,
-.zone-btn:focus-visible {
-  background: rgba(111,143,94,.12);
-  outline: 1.5px dashed var(--ink-faint);
-  outline-offset: -3px;
-}
-.zone-btn:focus-visible { outline-color: var(--soccer); }
-.zone-btn:disabled { cursor: default; pointer-events: none; }
-.zone-btn span {
-  margin: 3px;
-  font-family: var(--font-mono); font-size: 10px; color: var(--ink-dim);
-  background: rgba(241,235,221,.7); padding: 0 3px; border-radius: 2px;
-}
-
-/* ── Screen-reader-only status text ─────────────── */
-.sr-only {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
-}
-
 /* ── Guitar overlays (above canvas) ─────────────── */
+
 .guitar-strings {
   position: absolute;
   bottom: 6%; left: 0;
@@ -364,7 +318,12 @@ em.hero__word { margin-right: 0; font-style: italic; }
   /* Hide all decoration and interactive layers */
   .section__anim { display: none; }
   .section__hint { display: none; }
-  .soccer-grid { display: none; }
+
+  /* Collapse the soccer pin back to a normal-height static section instead
+     of leaving its scrub scroll-range (240vh) empty once the animation
+     driving it is hidden above. */
+  .section--pinned { min-height: 90vh; }
+  .section--pinned .section__content { position: relative; height: auto; }
 
   * { transition-duration: 0.01ms !important; }
 }
