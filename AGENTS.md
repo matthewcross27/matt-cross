@@ -65,12 +65,15 @@ SVG `<g>`/`<path>` transforms via the `transform` *attribute*, never CSS `transf
 *style* - unaffected by `transformOrigin`. Each attribute write triggers Blink's
 SVG-specific layout invalidation; fine for a one-off tween, measurably costly (profiled
 with Chrome tracing: ~50% dropped frames) for anything transformed on every scrub frame
-across a whole scroll range, as soccer's captain-reported laggy-scroll fix found. Two
+across a whole scroll range, as soccer's captain-reported laggy-scroll fix found. Three
 reusable helpers in `main.js` exist for the next scroll-scrub section to build on rather
 than re-discovering this:
 - `svgTransformDriver(el)` - tween a plain proxy object and apply the result via the
   element's CSS `transform` style in `onUpdate`, instead of letting GSAP set `x`/`y` on
-  the element directly. Used for soccer's ball/crowd/pitch groups.
+  the element directly. Used for soccer's ball/crowd/pitch groups (translate and, for the
+  pitch's net-pulse, `scaleY`).
+- `svgRotationDriver(el, initialDeg)` - same rationale, for a single joint's rotation
+  instead of a translate/scale; drives every pivot of soccer's kicker figure.
 - `createPinnedScrub(section, stage, vars)` - the shared ScrollTrigger
   trigger/endTrigger/`pin:false` wiring for a CSS-`position:sticky`-pinned section (CSS
   does the pinning; GSAP only scrubs the timeline against the scroll range the section's
