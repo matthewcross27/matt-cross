@@ -119,6 +119,33 @@ re-run more headless trace comparisons expecting them to settle it - this sandbo
 twice shown a clean trace while the real complaint persisted, so get a trace or profile
 from an actual device/browser instead, or ask what device/browser the captain is on.
 
+### Update: the real cause of "choppy" was a velocity discontinuity, not dropped frames
+
+A third follow-up gave a different, correct hypothesis: not raw frame drops, but the
+kicker figure's motion looking like stop-motion rather than a smooth arc. Investigated by
+directly setting the scrub timeline's `.progress()` (bypasses ScrollTrigger's own update
+cycle and scrub-smoothing lag entirely, testing the raw position function) and sampling at
+0.0005-fraction resolution. The **ball** was confirmed genuinely continuous (GSAP
+`motionPath` sampling the real quadratic-Bezier `path` every tick, max adjacent-sample
+jump ~0.28px - not the problem). The **kicker's joints** had a real, different bug: value
+was continuous (a GSAP tween always starts from the current value) but *velocity* wasn't -
+the 3-segment tween chain (`windup`/`contact`/`follow`, each its own `.to()` with its own
+ease) let each segment's easing curve dictate its own boundary velocity independently, so
+`power3.in` accelerating into the end of `contact` handed off to `power2.out` restarting a
+slower deceleration for `follow`, producing a measurable ~5.7deg jump per 0.0005-progress
+step right at the contact moment - the single most dramatic instant in the whole sequence.
+Fixed by replacing the tween chain with `hermiteSpline()`: a clamped cubic Hermite spline
+through all 4 poses (idle/windup/contact/follow), evaluated as one continuous formula of
+scroll progress directly in the scrub's `onUpdate` (same "compute the exact value from the
+current fraction" standard `svgTransformDriver`'s motionPath already met) rather than
+GSAP tweening between named poses. Each interior knot's tangent is shared by both
+adjoining segments by construction, so value *and* velocity match on both sides of every
+pose - verified both by a standalone unit test of the spline function (finite-difference
+velocity estimates from both sides converge to the same value as epsilon shrinks) and by
+re-sampling the live page. If you retime `KICK_POSES`/`KICK_T`, this guarantee holds
+automatically - no per-segment easing to hand-tune for a smooth handoff. Applies only to
+the kicker; the ball's motionPath approach was never part of this bug.
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.

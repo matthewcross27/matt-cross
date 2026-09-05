@@ -84,6 +84,51 @@ const KICK_POSES = {
   contact: { torso: -72, armB_u:110,  armB_f: 20,  armF_u: 60,  armF_f:-10,  legP_t:100,  legP_s:-18,  legP_f: -58, legK_t: 34,  legK_s: -6,  legK_f: -70 },
   follow:  { torso:-100, armB_u: 90,  armB_f: 15,  armF_u: 90,  armF_f: 10,  legP_t:100,  legP_s:-10,  legP_f: -58, legK_t:-25,  legK_s: 10,  legK_f: -40 },
 };
+// Scroll-fraction position of each named pose along the kick. Shared with
+// the ball's CONTACT_T gate below (KICK_T.contact) so both stay in lockstep
+// if the kick's timing is ever retuned.
+const KICK_T = { idle: 0, windup: 0.10, contact: 0.14, follow: 0.20 };
+
+// Captain review (follow-up 3): the kicker's joints previously animated via
+// 3 chained GSAP tweens (idle->windup->contact->follow), each with its own
+// ease. Values were already continuous (a tween always starts from the
+// current value), but *velocity* wasn't - power3.in accelerates hard into
+// the end of the contact tween, then power2.out restarts its own, much
+// slower deceleration curve for follow, producing a real motion "kink"
+// right at KICK_T.contact (measured: adjacent-sample jump of ~5.7deg per
+// 0.0005 progress step, versus ~0 elsewhere). A clamped cubic Hermite
+// spline through all 4 poses - the same "evaluate a continuous formula of
+// the current scroll fraction" standard the ball's motionPath already
+// meets - fixes this by construction: each interior knot's tangent is
+// shared by both adjoining segments, so velocity matches on both sides of
+// every pose, not just position. `knots` is `[{t, v}, ...]` sorted by t;
+// endpoints are clamped to zero velocity (idle is a rest state, follow is
+// held while the figure fades out, so both are physically at rest).
+function hermiteSpline(knots) {
+  const n = knots.length;
+  const tangents = knots.map((k, i) => {
+    if (i === 0 || i === n - 1) return 0;
+    const prev = knots[i - 1], next = knots[i + 1];
+    return (next.v - prev.v) / (next.t - prev.t);
+  });
+  return function (t) {
+    if (t <= knots[0].t) return knots[0].v;
+    if (t >= knots[n - 1].t) return knots[n - 1].v;
+    let i = 0;
+    while (i < n - 2 && t > knots[i + 1].t) i++;
+    const t0 = knots[i].t, t1 = knots[i + 1].t;
+    const v0 = knots[i].v, v1 = knots[i + 1].v;
+    const m0 = tangents[i], m1 = tangents[i + 1];
+    const dt = t1 - t0;
+    const s = (t - t0) / dt;
+    const s2 = s * s, s3 = s2 * s;
+    const h00 = 2 * s3 - 3 * s2 + 1;
+    const h10 = s3 - 2 * s2 + s;
+    const h01 = -2 * s3 + 3 * s2;
+    const h11 = s3 - s2;
+    return h00 * v0 + h10 * dt * m0 + h01 * v1 + h11 * dt * m1;
+  };
+}
 
 function buildKicker(svg, restPt) {
   const NS = 'http://www.w3.org/2000/svg';
@@ -145,20 +190,21 @@ function buildKicker(svg, restPt) {
     legK_t: legKick.thigh, legK_s: legKick.shin, legK_f: legKick.foot,
   };
   const joints = {};
+  const jointSplines = {};
   Object.keys(jointEls).forEach(function (k) {
     // Each pivot's rough.js line is drawn from local (0,0), so a CSS
     // transformOrigin of '0 0' pins rotation to the actual joint, without
     // the per-frame SVG transform-attribute write (see svgRotationDriver).
     joints[k] = svgRotationDriver(jointEls[k], KICK_POSES.idle[k]);
+    jointSplines[k] = hermiteSpline([
+      { t: KICK_T.idle, v: KICK_POSES.idle[k] },
+      { t: KICK_T.windup, v: KICK_POSES.windup[k] },
+      { t: KICK_T.contact, v: KICK_POSES.contact[k] },
+      { t: KICK_T.follow, v: KICK_POSES.follow[k] },
+    ]);
   });
 
-  return { root: root, joints: joints };
-}
-
-function applyPose(tl, joints, pose, at, duration, ease) {
-  Object.keys(pose).forEach(function (k) {
-    tl.to(joints[k].state, { rotation: pose[k], duration: duration, ease: ease, onUpdate: joints[k].apply }, at);
-  });
+  return { root: root, joints: joints, jointSplines: jointSplines };
 }
 
 // Common shape for a pinned scroll-scrub section: `stage` is the CSS
@@ -339,19 +385,35 @@ function setupSoccer() {
 
   // Captain review finding: the ball must never start its flight before the
   // figure's contact pose has visibly resolved. CONTACT_T is the exact
-  // scrub-timeline fraction the contact tween finishes at (windup 0-0.10,
-  // contact 0.10-0.14) - every ball/trail/shadow tween below is gated to
-  // start there, not at 0, so scrubbing to any point before it shows only
-  // the windup, never the ball already moving.
-  const CONTACT_T = 0.14;
+  // scroll fraction the joints' spline (below) reaches the contact pose at -
+  // every ball/trail/shadow tween below is gated to start there, not at 0,
+  // so scrubbing to any point before it shows only the windup, never the
+  // ball already moving.
+  const CONTACT_T = KICK_T.contact;
   const FLIGHT_D = 1 - CONTACT_T;
   const REDRAW_AT = CONTACT_T + FLIGHT_D * 0.5;
 
   let redrawnAt = null;
   let flourished = false;
+  const jointKeys = Object.keys(kicker.joints);
 
   const tl = createPinnedScrub(section, stage, {
     onUpdate(self) {
+      // Direct formula evaluation, not tween-to-tween handoffs: each joint's
+      // spline is one continuous function of the scroll fraction across the
+      // whole kick, so there's no phase-boundary velocity kink (see
+      // hermiteSpline's comment - this is what follow-up 3 found and fixed).
+      // Guarded to the active kick window (progress <= KICK_T.follow) so
+      // this doesn't keep writing a clamped, unchanging value every tick for
+      // the rest of the scroll once the figure has settled/faded - the
+      // spline-chain tweens it replaced naturally stopped calling onUpdate
+      // once complete, and this preserves that same per-frame-write budget.
+      if (self.progress <= KICK_T.follow) {
+        jointKeys.forEach((k) => {
+          kicker.joints[k].state.rotation = kicker.jointSplines[k](self.progress);
+          kicker.joints[k].apply();
+        });
+      }
       if (redrawnAt === null && self.progress > REDRAW_AT) { redrawnAt = self.progress; settleRedraw(scene); }
       if (self.progress < REDRAW_AT - 0.1) { redrawnAt = null; }
       if (!flourished && self.progress > 0.97) { flourished = true; impactFlourish(svg, impactPoint, '#6f8f5e'); netPulse(pitchDrv); }
@@ -359,10 +421,7 @@ function setupSoccer() {
     },
   });
 
-  applyPose(tl, kicker.joints, KICK_POSES.windup, 0, 0.10, 'power1.inOut');
-  applyPose(tl, kicker.joints, KICK_POSES.contact, 0.10, 0.04, 'power3.in');
-  applyPose(tl, kicker.joints, KICK_POSES.follow, CONTACT_T, 0.06, 'power2.out');
-  tl.to(kicker.root, { opacity: 0, duration: 0.08, ease: 'power1.in' }, 0.20);
+  tl.to(kicker.root, { opacity: 0, duration: 0.08, ease: 'power1.in' }, KICK_T.follow);
 
   tl.to(ballDrv.state, { motionPath: { path: path, start: 0, end: 1, autoRotate: false }, ease: 'none', duration: FLIGHT_D, onUpdate: ballDrv.apply }, CONTACT_T);
   tl.to(trail, { strokeDashoffset: 0, ease: 'none', duration: FLIGHT_D }, CONTACT_T);
