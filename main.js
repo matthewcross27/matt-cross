@@ -189,9 +189,9 @@ function createPinnedScrub(section, stage, vars) {
 // scrub-driven position updates on the compositor-only transform path. Reusable
 // for any future scroll-scrub section that continuously repositions an element.
 function svgTransformDriver(el) {
-  const state = { x: 0, y: 0 };
+  const state = { x: 0, y: 0, scaleY: 1 };
   function apply() {
-    el.style.transform = 'translate(' + state.x + 'px,' + state.y + 'px)';
+    el.style.transform = 'translate(' + state.x + 'px,' + state.y + 'px) scaleY(' + state.scaleY + ')';
   }
   apply();
   return { state: state, apply: apply };
@@ -303,11 +303,10 @@ function impactFlourish(svg, point, color) {
   });
 }
 
-function netPulse(svg) {
-  const net = svg.querySelector('.layer-pitch');
-  gsap.fromTo(net, { scaleY: 1 }, {
+function netPulse(pitchDrv) {
+  gsap.fromTo(pitchDrv.state, { scaleY: 1 }, {
     scaleY: 0.965, duration: 0.1, yoyo: true, repeat: 1,
-    transformOrigin: '92% 55%', ease: 'power1.inOut',
+    ease: 'power1.inOut', onUpdate: pitchDrv.apply,
   });
 }
 
@@ -331,6 +330,8 @@ function setupSoccer() {
   const ballDrv = svgTransformDriver(ball);
   const crowdDrv = svgTransformDriver(crowd);
   const pitchDrv = svgTransformDriver(pitch);
+  pitch.style.transformBox = 'fill-box';
+  pitch.style.transformOrigin = '92% 55%';
   ballDrv.state.x = restPt.x;
   ballDrv.state.y = restPt.y;
   ballDrv.apply();
@@ -353,7 +354,7 @@ function setupSoccer() {
     onUpdate(self) {
       if (redrawnAt === null && self.progress > REDRAW_AT) { redrawnAt = self.progress; settleRedraw(scene); }
       if (self.progress < REDRAW_AT - 0.1) { redrawnAt = null; }
-      if (!flourished && self.progress > 0.97) { flourished = true; impactFlourish(svg, impactPoint, '#6f8f5e'); netPulse(svg); }
+      if (!flourished && self.progress > 0.97) { flourished = true; impactFlourish(svg, impactPoint, '#6f8f5e'); netPulse(pitchDrv); }
       if (self.progress < 0.9) { flourished = false; }
     },
   });
