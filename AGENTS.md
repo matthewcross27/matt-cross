@@ -39,11 +39,17 @@ collision-response need. Two libraries remain, each with a fixed job:
 `#sec-soccer` is a pinned (`.section--pinned`, CSS `position: sticky`), non-interactive
 scroll-scrub accent (`setupSoccer()` in `main.js`) - not a click-to-shoot minigame; that
 was PR #1's shipped version, later replaced. Two sharp edges if you touch this section:
-- `position: sticky` on `.section__anim`/`.section__content` breaks silently if any
-  ancestor between them and the page's real scrolling container gets an `overflow` other
-  than `visible` - `.section--pinned` explicitly overrides the base `.section`'s
-  `overflow: hidden` for this reason. Don't reintroduce `overflow: hidden` there without
-  rechecking the pin still holds visually across the full scroll range.
+- The single `.section__pin` wrapper (child of `.section--pinned`, parent of
+  `.section__anim`/`.section__content`) carries the `position: sticky`, so the two overlay
+  each other exactly like they do in every unpinned `.section`. Making `.section__anim`
+  and `.section__content` independently sticky siblings instead breaks this - each then
+  reserves its own static-flow box, so the header doesn't overlay until the scroll has
+  advanced roughly a full viewport height into the section. `position: sticky` also
+  breaks silently if any ancestor between `.section__pin` and the page's real scrolling
+  container gets an `overflow` other than `visible` - `.section--pinned` explicitly
+  overrides the base `.section`'s `overflow: hidden` for this reason. Don't reintroduce
+  `overflow: hidden` there without rechecking the pin still holds visually across the full
+  scroll range.
 - The ball's flight must never start before the kicker figure's `contact` pose resolves
   (`CONTACT_T` in `setupSoccer()`) - a captain-review-caught regression class. If you
   retime the kick poses, keep every ball/trail/shadow tween's start gated to that same

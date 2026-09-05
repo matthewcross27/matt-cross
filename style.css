@@ -9,7 +9,6 @@
   --soccer:    #6f8f5e;
   --basket:    #cf8542;
   --guitar:    #7d5f86;
-  --save:      #b3543f;
 
   --font-serif: 'EB Garamond', Georgia, serif;
   --font-mono:  'Space Mono', 'Courier New', monospace;
@@ -134,10 +133,12 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 }
 
 /* ── Pinned scroll-scrub sections (soccer decorative accent) ────
-   A taller-than-viewport section whose .section__anim and
-   .section__content both go position:sticky top:0, so both stick
-   together while the section's own extra height supplies the scroll
-   range main.js's ScrollTrigger scrub reads from - see setupSoccer(). ── */
+   A taller-than-viewport section whose .section__pin wrapper goes
+   position:sticky top:0 height:100vh, so .section__anim and
+   .section__content overlay inside that single sticky box, the same
+   way they overlay inside the plain .section box everywhere else,
+   while the section's own extra height supplies the scroll range
+   main.js's ScrollTrigger scrub reads from - see setupSoccer(). ── */
 .section--pinned {
   min-height: 240vh;
   /* position:sticky below is inert if any ancestor (including .section's own
@@ -145,19 +146,10 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
      own overflow:hidden still contains the scene inside its 100vh box. */
   overflow: visible;
 }
-.section--pinned .section__anim {
-  position: sticky;
-  inset: auto;
-  top: 0;
-  height: 100vh;
-}
-.section--pinned .section__content {
+.section--pinned .section__pin {
   position: sticky;
   top: 0;
   height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
 }
 .soccer-scene {
   position: absolute;
@@ -323,7 +315,7 @@ em.hero__word { margin-right: 0; font-style: italic; }
      of leaving its scrub scroll-range (240vh) empty once the animation
      driving it is hidden above. */
   .section--pinned { min-height: 90vh; }
-  .section--pinned .section__content { position: relative; height: auto; }
+  .section--pinned .section__pin { position: relative; height: auto; }
 
   * { transition-duration: 0.01ms !important; }
 }
