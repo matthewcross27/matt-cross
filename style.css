@@ -161,8 +161,15 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
    style (verified: it does this even with a pixel transformOrigin) - which
    triggers Blink's per-write SVG layout invalidation. Promoting these
    scrub-driven groups to their own compositor layer keeps that invalidation
-   scoped to the layer instead of cascading into a full-page layout/paint. */
-.ball-group, .layer-crowd, .layer-pitch, .kicker-figure {
+   scoped to the layer instead of cascading into a full-page layout/paint.
+   Scoped to just the ball and kicker (large, dramatic motion, clear payoff)
+   rather than every scrub-driven group - .layer-crowd/.layer-pitch only ever
+   shift a few px for parallax, and each extra always-promoted layer has its
+   own GPU memory/compositing cost that a captain-reported "still choppy on
+   a real device" follow-up (see AGENTS.md) couldn't be ruled out as part of,
+   so the weakest-payoff promotions were dropped rather than kept "just in
+   case". */
+.ball-group, .kicker-figure {
   will-change: transform;
 }
 

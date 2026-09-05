@@ -90,6 +90,35 @@ non-trivial DOM writes (e.g. a rough.js redraw) on every scrub frame or on a tim
 can overlap active scrolling - `settleRedraw()` was cut from 3 passes to 1 for exactly
 this reason.
 
+### This sandbox cannot validate GPU/compositing cost - don't over-trust a clean trace here
+
+A second captain follow-up reported real scrolling still choppy after the fix above. A
+fresh investigation (real `page.mouse.wheel()` gestures, not scrollTo jumps; Chrome
+tracing; a MutationObserver-based check for >1 write/frame; stripping every SVG filter)
+found **no remaining main-thread JS cause**: zero `getBoundingClientRect` calls during
+scroll (ScrollTrigger caches its measurements, doesn't re-measure per frame), roughly one
+style write per continuously-animated element per frame (not multiple), the single
+`settleRedraw` pass landing as an ~8ms task exactly where expected rather than a stall,
+and removing every wobble filter changing nothing measurable. A synthetic-40ms-per-frame
+sanity check confirmed this test harness *can* detect real per-frame cost when it's
+present - so the ~16.6ms average measured for the actual scene is a genuine light-cost
+reading in this environment, not a broken metric masking something worse.
+
+That combination - clean main-thread trace, harness proven trustworthy, captain still
+sees real choppiness - points at GPU/compositing cost on real hardware (SVG filter
+rasterization, or compositor layer/fill-rate pressure from several always-promoted
+layers), which headless, software-rendered Chrome has no real GPU to exercise the same
+way. Two independently-justified complexity reductions were made as a reasonable hedge
+(`feTurbulence numOctaves` 2->1 on all three wobble filters - halves the noise-computation
+work per pixel with negligible visual difference at these small displacement scales; and
+`will-change: transform` narrowed from four scrub-driven groups down to just the ball and
+kicker, since crowd/pitch only ever shift a few px for parallax and each always-promoted
+layer has its own GPU memory/compositing cost) - but neither is a *verified* fix the way
+the attribute-vs-style switch was. If a future report says still-choppy after this, don't
+re-run more headless trace comparisons expecting them to settle it - this sandbox has now
+twice shown a clean trace while the real complaint persisted, so get a trace or profile
+from an actual device/browser instead, or ask what device/browser the captain is on.
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.
