@@ -137,19 +137,19 @@ function buildKicker(svg, restPt) {
   const headAnchor = anchorAt(torso, LEN.torso + LEN.neck, 0);
   headAnchor.appendChild(rc.circle(0, 0, 17, Object.assign({}, STROKE, { fill: 'none', strokeWidth: 1.7 })));
 
-  const joints = {
+  const jointEls = {
     torso: torso,
     armB_u: armBack.upper, armB_f: armBack.fore,
     armF_u: armFront.upper, armF_f: armFront.fore,
     legP_t: legPlant.thigh, legP_s: legPlant.shin, legP_f: legPlant.foot,
     legK_t: legKick.thigh, legK_s: legKick.shin, legK_f: legKick.foot,
   };
-  Object.keys(joints).forEach(function (k) {
-    // svgOrigin (absolute SVG user-space coords), not transformOrigin (which
-    // GSAP resolves against the element's own hand-drawn, slightly-off-(0,0)
-    // bounding box) - this is what pins each pivot's rotation to the actual
-    // joint.
-    gsap.set(joints[k], { svgOrigin: '0 0', rotation: KICK_POSES.idle[k] });
+  const joints = {};
+  Object.keys(jointEls).forEach(function (k) {
+    // Each pivot's rough.js line is drawn from local (0,0), so a CSS
+    // transformOrigin of '0 0' pins rotation to the actual joint, without
+    // the per-frame SVG transform-attribute write (see svgRotationDriver).
+    joints[k] = svgRotationDriver(jointEls[k], KICK_POSES.idle[k]);
   });
 
   return { root: root, joints: joints };
@@ -157,7 +157,7 @@ function buildKicker(svg, restPt) {
 
 function applyPose(tl, joints, pose, at, duration, ease) {
   Object.keys(pose).forEach(function (k) {
-    tl.to(joints[k], { rotation: pose[k], duration: duration, ease: ease }, at);
+    tl.to(joints[k].state, { rotation: pose[k], duration: duration, ease: ease, onUpdate: joints[k].apply }, at);
   });
 }
 
@@ -192,6 +192,19 @@ function svgTransformDriver(el) {
   const state = { x: 0, y: 0 };
   function apply() {
     el.style.transform = 'translate(' + state.x + 'px,' + state.y + 'px)';
+  }
+  apply();
+  return { state: state, apply: apply };
+}
+
+// Same rationale as svgTransformDriver, for the kicker figure's joint
+// rotations: each pivot is rotated every scrub frame during the kick window,
+// which otherwise hits the same SVG-attribute layout-invalidation path.
+function svgRotationDriver(el, initialDeg) {
+  const state = { rotation: initialDeg || 0 };
+  el.style.transformOrigin = '0 0';
+  function apply() {
+    el.style.transform = 'rotate(' + state.rotation + 'deg)';
   }
   apply();
   return { state: state, apply: apply };
