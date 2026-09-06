@@ -7,28 +7,41 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 ## Real-browser testing in this sandbox
 
 `chrome-devtools-axi` (and the underlying `chrome-devtools-mcp`) do not work in this
-worktree environment: no Chrome/Chromium is installed, and `open`/`newpage` report
-"0 pages open" even after returning a page object. Workaround that does work (network
-access to jsdelivr/npm/Google's Chrome-for-Testing CDN is available):
+worktree environment: no Chrome/Chromium is installed. Both of these DO work (network
+access to jsdelivr/npm/Google's Chrome-for-Testing CDN is available); install into an
+explicit scratch path because the default caches get wiped between calls:
 
 ```sh
+# option A (verified current): Playwright + its Chromium
+npm install playwright --no-save
+PLAYWRIGHT_BROWSERS_PATH=<scratch>/pw-browsers npx playwright install chromium
+# option B: puppeteer-core + Chrome-for-Testing
 npx -y @puppeteer/browsers install chrome@stable --path /tmp/chrome-install
-npm install puppeteer-core   # in a scratch dir
 ```
-Then drive it with `puppeteer-core`'s `puppeteer.launch({ executablePath: <the
-downloaded "Google Chrome for Testing" binary>, headless: true, args: ['--no-sandbox'] })`.
-This gives real screenshots, click/tap/keyboard events, and console/pageerror capture -
-serve the site first with a plain static server (e.g. `python3 -m http.server`).
+Serve the site first with a plain static server (`python3 -m http.server`). Playwright's
+default Chromium (`headless: true`) does support CSS scroll-driven animation and
+compositing, so it can exercise soccer's `view-timeline` path. It still has **no real
+GPU** (software raster) - it cannot reproduce the captain's compositing / fill-rate /
+ProMotion cost; use it for JS/main-thread behaviour and 1:1-tracking checks, not final
+smoothness sign-off. Drive real `page.mouse.wheel()` / rAF `scrollBy` momentum bursts,
+never `scrollTo` jumps, when measuring scroll feel.
 
 ## Animation library boundary (GSAP vs anime.js)
 
 Matter.js was removed (soccer's click-to-shoot minigame it existed for was replaced by a
 decorative scroll-scrub accent); don't reintroduce a physics engine without a real
-collision-response need. Two libraries remain, each with a fixed job:
+collision-response need. MotionPathPlugin was removed when soccer's ball moved to CSS
+`offset-path`; nothing else used it. Libraries in play, each with a fixed job:
+- **Native CSS scroll-driven animation** (`view-timeline` + `animation-timeline`): the
+  soccer scroll-scrub - ball `offset-path`/`offset-distance`, chalk trail, parallax, and
+  the kicker figure's joint rotations. `@keyframes` are generated in JS from
+  `hermiteSpline` / `KICK_POSES` / `CONTACT_T` (`buildSoccerScrubCSS()` in `main.js`).
+  This is the go-forward pattern for decorative-accent scroll sections (basketball/guitar
+  when they get there).
 - **GSAP + ScrollTrigger**: hero entrance, section scroll-reveals, nav dot, each
-  minigame's scroll-triggered roll-in/roll-out, and soccer's continuous `scrub` timeline
-  (ball motion path, chalk trail, parallax, and the joint-based kicker figure - see
-  `setupSoccer()` in `main.js`).
+  minigame's scroll-triggered roll-in/roll-out, and soccer's one-shot contact accents
+  (`netPulse`, fired by a scrub-free ScrollTrigger progress watcher). NOT soccer's scrub
+  itself anymore.
 - **anime.js v4** (UMD global `anime.animate`/`anime.stagger`/`anime.utils`/`anime.remove`,
   not v3's single `anime()` call or v4's ESM named exports): sprite-level tweens that must
   land at an exact deterministic target, e.g. soccer's contact-moment ink flourish
@@ -38,120 +51,93 @@ collision-response need. Two libraries remain, each with a fixed job:
 
 `#sec-soccer` is a pinned (`.section--pinned`, CSS `position: sticky`), non-interactive
 scroll-scrub accent (`setupSoccer()` in `main.js`) - not a click-to-shoot minigame; that
-was PR #1's shipped version, later replaced. Two sharp edges if you touch this section:
-- The single `.section__pin` wrapper (child of `.section--pinned`, parent of
-  `.section__anim`/`.section__content`) carries the `position: sticky`, so the two overlay
-  each other exactly like they do in every unpinned `.section`. Making `.section__anim`
-  and `.section__content` independently sticky siblings instead breaks this - each then
-  reserves its own static-flow box, so the header doesn't overlay until the scroll has
-  advanced roughly a full viewport height into the section. `position: sticky` also
-  breaks silently if any ancestor between `.section__pin` and the page's real scrolling
-  container gets an `overflow` other than `visible` - `.section--pinned` explicitly
-  overrides the base `.section`'s `overflow: hidden` for this reason. Don't reintroduce
-  `overflow: hidden` there without rechecking the pin still holds visually across the full
-  scroll range.
+was PR #1's shipped version, later replaced. Sharp edges if you touch this section:
+- The section's motion is driven by a native CSS `view-timeline` declared on
+  `.section--pinned` (see `style.css`); `buildSoccerScrubCSS()` generates the
+  `@keyframes` + `animation-timeline: --soc-tl` rules bound to it. `setupSoccerFallback()`
+  is a JS rAF 1:1 driver for engines without support (gated on
+  `CSS.supports('animation-timeline','scroll()')`) - keep it working; it neutralises the
+  CSS animations with inline `animation: none` and reuses
+  `svgTransformDriver`/`svgRotationDriver`.
+- The timeline's `contain` range is *exactly* the CSS-sticky pin window, so the pin
+  geometry still matters. The single `.section__pin` wrapper (child of `.section--pinned`,
+  parent of `.section__anim`/`.section__content`) carries the `position: sticky`, so the
+  two overlay each other like in every unpinned `.section`. Making them independently
+  sticky siblings breaks this - each reserves its own static-flow box. `position: sticky`
+  breaks silently if any ancestor between `.section__pin` and the scrolling container gets
+  `overflow` other than `visible` (`.section--pinned` overrides the base `.section`'s
+  `overflow: hidden` for this); a `view-timeline` NAME lookup is not broken by ancestor
+  overflow, so `.section__anim`'s `overflow: hidden` is fine. Don't reintroduce
+  `overflow: hidden` on `.section--pinned` without rechecking the pin holds across the
+  full scroll range.
 - The ball's flight must never start before the kicker figure's `contact` pose resolves
-  (`CONTACT_T` in `setupSoccer()`) - a captain-review-caught regression class. If you
-  retime the kick poses, keep every ball/trail/shadow tween's start gated to that same
-  constant rather than to timeline `0`.
+  (`CONTACT_T` = `KICK_T.contact` in `setupSoccer()`) - a captain-review-caught regression
+  class. The generated ball/trail/shadow keyframes hold flat until `CONTACT_T`; keep it
+  that way (and gated to the same constant) if you retime the kick.
 - Basketball and guitar are intentionally still the older click/hover minigame pattern;
-  this decorative-accent direction is not yet extended to them, but should reuse the
-  performance patterns below when it is.
+  the decorative-accent direction is not yet extended to them, but should reuse the CSS
+  scroll-driven pattern and the notes below when it is.
 
-## Scroll-scrub performance: GSAP + SVG attribute transforms are expensive per-frame
+## Scroll-scrub performance
 
-Verified directly (a minimal isolated repro, not just this codebase, and independent of
-any specific measurement): GSAP always writes SVG `<g>`/`<path>` transforms via the
-`transform` *attribute*, never CSS `transform` *style* - unaffected by `transformOrigin`.
-Each attribute write triggers Blink's SVG-specific layout invalidation; fine for a one-off
-tween, but a real, reproducible cost for anything transformed on every scrub frame across
-a whole scroll range, as soccer's captain-reported laggy-scroll fix found. The specific
-frame-drop/stall percentages recorded while diagnosing that fix (Chrome tracing, ~50%
-dropped frames before / none after) were measured in this project's headless, GPU-less
-sandbox and should be read as evidence *of this sandbox*, not a portable benchmark - a
-later independent verification pass in the same kind of sandbox couldn't reproduce the
-exact numbers, though it did directly confirm the underlying attribute-vs-style mechanism
-switch by inspecting the DOM before/after. Trust the mechanism, not the exact percentages,
-when judging whether a similar fix is warranted elsewhere. Four reusable helpers in
-`main.js` exist for the next scroll-scrub section to build on rather than re-discovering
-this:
-- `svgTransformDriver(el)` - tween a plain proxy object and apply the result via the
-  element's CSS `transform` style in `onUpdate`, instead of letting GSAP set `x`/`y` on
-  the element directly. Used for soccer's ball/crowd/pitch groups (translate and, for the
-  pitch's net-pulse, `scaleY`).
-- `svgRotationDriver(el, initialDeg)` - same rationale, for a single joint's rotation
-  instead of a translate/scale; drives every pivot of soccer's kicker figure.
-- `createPinnedScrub(section, stage, vars)` - the shared ScrollTrigger
-  trigger/endTrigger/`pin:false` wiring for a CSS-`position:sticky`-pinned section (CSS
-  does the pinning; GSAP only scrubs the timeline against the scroll range the section's
-  extra height provides).
-- `hermiteSpline(knots)` - given `[{t, v}, ...]` sorted by `t`, returns a function of
-  scroll fraction that evaluates a clamped cubic Hermite spline through every knot, with
-  matched value *and* velocity at each interior knot by construction. Use this instead of
-  chaining several GSAP `.to()` tweens between named poses whenever a scrub-driven value
-  must pass through more than two known points - a per-segment-eased tween chain only
-  guarantees continuous value at the boundaries, not continuous velocity (see the "Update"
-  note below for the kicker-figure bug this caused).
-Also avoid animating non-transform/opacity properties (e.g. `stroke-dashoffset`) or doing
-non-trivial DOM writes (e.g. a rough.js redraw) on every scrub frame or on a timer that
-can overlap active scrolling - `settleRedraw()` was cut from 3 passes to 1 for exactly
-this reason.
+### A numeric ScrollTrigger `scrub` is a catch-up smoother, NOT a 1:1 scroll link
 
-### This sandbox cannot validate GPU/compositing cost - don't over-trust a clean trace here
+`scrub: 0.35` (etc.) eases the timeline toward the scroll position over ~N seconds
+instead of tracking it. On a fast trackpad flick that means the scene renders up to ~15%
+of the timeline behind scroll and keeps animating 150-350ms after input stops (the
+"lag"), and rendered per-frame velocity over/undershoots ~±50% even on perfectly smooth
+input (the "stop-motion" look). This was the root cause of soccer's laggy-scroll /
+jumpy-ball reports through PRs #1-2 and three follow-up rounds - none of which touched the
+`scrub` mechanism. **For a decorative scrub, never use a raw numeric `scrub`.** Prefer
+native CSS scroll-driven animation (what soccer now does), else `scrub: true` (strict
+1:1), else a *capped* rAF lerp if a deliberate glide-to-stop is wanted.
 
-A second captain follow-up reported real scrolling still choppy after the fix above. A
-fresh investigation (real `page.mouse.wheel()` gestures, not scrollTo jumps; Chrome
-tracing; a MutationObserver-based check for >1 write/frame; stripping every SVG filter)
-found **no remaining main-thread JS cause**: zero `getBoundingClientRect` calls during
-scroll (ScrollTrigger caches its measurements, doesn't re-measure per frame), roughly one
-style write per continuously-animated element per frame (not multiple), the single
-`settleRedraw` pass landing as an ~8ms task exactly where expected rather than a stall,
-and removing every wobble filter changing nothing measurable. A synthetic-40ms-per-frame
-sanity check confirmed this test harness *can* detect real per-frame cost when it's
-present - so the ~16.6ms average measured for the actual scene is a genuine light-cost
-reading in this environment, not a broken metric masking something worse.
+### Soccer now uses native CSS scroll-driven animation (the go-forward pattern)
 
-That combination - clean main-thread trace, harness proven trustworthy, captain still
-sees real choppiness - points at GPU/compositing cost on real hardware (SVG filter
-rasterization, or compositor layer/fill-rate pressure from several always-promoted
-layers), which headless, software-rendered Chrome has no real GPU to exercise the same
-way. Two independently-justified complexity reductions were made as a reasonable hedge
-(`feTurbulence numOctaves` 2->1 on all three wobble filters - halves the noise-computation
-work per pixel with negligible visual difference at these small displacement scales; and
-`will-change: transform` narrowed from four scrub-driven groups down to just the ball and
-kicker, since crowd/pitch only ever shift a few px for parallax and each always-promoted
-layer has its own GPU memory/compositing cost) - but neither is a *verified* fix the way
-the attribute-vs-style switch was. If a future report says still-choppy after this, don't
-re-run more headless trace comparisons expecting them to settle it - this sandbox has now
-twice shown a clean trace while the real complaint persisted, so get a trace or profile
-from an actual device/browser instead, or ask what device/browser the captain is on.
+`view-timeline` on `.section--pinned` + JS-generated `@keyframes` bound to it
+(`buildSoccerScrubCSS()`); the compositor advances motion 1:1 with scroll, structurally
+immune to scrub lag. `setupSoccerFallback()` is the tested JS rAF 1:1 driver for engines
+without support. Ball = `offset-path`/`offset-distance`; kicker joints = generated
+`rotate` keyframes; parallax = `translate` keyframes. Extend this to basketball/guitar
+rather than reviving the old GSAP `createPinnedScrub` helper (deleted with this change).
 
-### Update: the real cause of "choppy" was a velocity discontinuity, not dropped frames
+### `hermiteSpline(knots)` - keep using it for multi-pose scrub values
 
-A third follow-up gave a different, correct hypothesis: not raw frame drops, but the
-kicker figure's motion looking like stop-motion rather than a smooth arc. Investigated by
-directly setting the scrub timeline's `.progress()` (bypasses ScrollTrigger's own update
-cycle and scrub-smoothing lag entirely, testing the raw position function) and sampling at
-0.0005-fraction resolution. The **ball** was confirmed genuinely continuous (GSAP
-`motionPath` sampling the real quadratic-Bezier `path` every tick, max adjacent-sample
-jump ~0.28px - not the problem). The **kicker's joints** had a real, different bug: value
-was continuous (a GSAP tween always starts from the current value) but *velocity* wasn't -
-the 3-segment tween chain (`windup`/`contact`/`follow`, each its own `.to()` with its own
-ease) let each segment's easing curve dictate its own boundary velocity independently, so
-`power3.in` accelerating into the end of `contact` handed off to `power2.out` restarting a
-slower deceleration for `follow`, producing a measurable ~5.7deg jump per 0.0005-progress
-step right at the contact moment - the single most dramatic instant in the whole sequence.
-Fixed by replacing the tween chain with `hermiteSpline()`: a clamped cubic Hermite spline
-through all 4 poses (idle/windup/contact/follow), evaluated as one continuous formula of
-scroll progress directly in the scrub's `onUpdate` (same "compute the exact value from the
-current fraction" standard `svgTransformDriver`'s motionPath already met) rather than
-GSAP tweening between named poses. Each interior knot's tangent is shared by both
-adjoining segments by construction, so value *and* velocity match on both sides of every
-pose - verified both by a standalone unit test of the spline function (finite-difference
-velocity estimates from both sides converge to the same value as epsilon shrinks) and by
-re-sampling the live page. If you retime `KICK_POSES`/`KICK_T`, this guarantee holds
-automatically - no per-segment easing to hand-tune for a smooth handoff. Applies only to
-the kicker; the ball's motionPath approach was never part of this bug.
+Given `[{t, v}, ...]` sorted by `t`, returns a function of scroll fraction evaluating a
+clamped cubic Hermite spline through every knot, with matched value *and* velocity at
+each interior knot by construction. Round 3 found the kicker's old 3-tween chain
+(`windup`/`contact`/`follow`, each its own ease) was value-continuous but not
+velocity-continuous - a ~5.7deg jump per 0.0005-progress step right at the contact moment,
+read as stop-motion. `hermiteSpline` fixes it by construction; sampling it into ~48
+`@keyframes`/joint preserves the guarantee (max residual velocity kink ~0.5deg/0.0005,
+spread evenly, not spiked at contact - re-verified when the keyframes were introduced).
+Retiming `KICK_POSES`/`KICK_T` and regenerating reproduces it automatically.
+
+### SVG `transform` *attribute* writes are expensive per-frame; live wobble filters cost GPU
+
+GSAP always writes SVG `<g>`/`<path>` transforms via the `transform` *attribute* (not CSS
+`transform` *style*, unaffected by `transformOrigin`), triggering Blink's SVG layout
+invalidation on every write - a real per-frame cost across a scroll range.
+`svgTransformDriver(el)` / `svgRotationDriver(el, deg)` in `main.js` tween a proxy object
+and apply via the CSS `transform` *style* instead; kept for the JS fallback and for
+basketball/guitar. The CSS scroll-driven happy path sidesteps this entirely (no per-frame
+JS transform write). Also: don't animate `stroke-dashoffset` on a *filtered* path, and
+never run a rough.js regen (`settleRedraw` was removed) while a scroll may be active - it
+fired mid-arc as a synchronous main-thread task. The three `feTurbulence`/
+`feDisplacementMap` wobble filters were removed with this change (real per-frame GPU
+re-raster on the captain's hardware); the hand-drawn look is now a static rough.js pass
+drawn once.
+
+### This sandbox cannot validate GPU/compositing cost
+
+Headless Chromium here is software-rendered - no real GPU, no ProMotion timing, no macOS
+momentum cadence. It repeatedly showed a clean main-thread trace while the captain's
+choppiness complaint persisted through rounds 2-3. It CAN verify: 1:1 tracking (ball
+per-frame move / accel / velocity CV), the `CONTACT_T` gate, keyframe continuity, the
+fallback path, no dropped frames, no console errors. It CANNOT sign off scroll *feel* -
+that's the captain's test on their Mac. Also: setting `.progress()` directly bypasses the
+scroll driver's update cycle, so it tests the position *function* but not scroll feel -
+use real wheel/`scrollBy`-momentum gestures for the latter.
 
 ## Maintaining this file
 
