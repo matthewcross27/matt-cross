@@ -132,13 +132,13 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   clip-path: inset(0 0 100% 0);
 }
 
-/* ── Pinned scroll-scrub sections (soccer decorative accent) ────
+/* ── Pinned scroll-scrub sections (soccer + basketball decorative accents) ────
    A taller-than-viewport section whose .section__pin wrapper goes
    position:sticky top:0 height:100vh, so .section__anim and
    .section__content overlay inside that single sticky box, the same
    way they overlay inside the plain .section box everywhere else,
    while the section's own extra height supplies the scroll range the
-   scrub is driven against - see setupSoccer(). ── */
+   scrub is driven against - see setupSoccer() / setupBasket(). ── */
 .section--pinned {
   min-height: 240vh;
   /* position:sticky below is inert if any ancestor (including .section's own
@@ -149,54 +149,36 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
      section is the view-timeline subject; because it is taller than the
      viewport, the timeline's `contain` phase spans exactly the CSS-sticky pin
      window (.section__pin is stuck while the section covers the viewport).
-     main.js's buildSoccerScrubCSS() generates @keyframes bound to this
-     timeline from the same KICK_POSES / hermiteSpline / CONTACT_T the kicker
-     has always used, so the compositor advances every element 1:1 with scroll
-     offset - no ScrollTrigger scrub catch-up smoothing, which was the
-     laggy-scroll / stop-motion-ball root cause (see AGENTS.md). setupSoccer()
-     keeps only a scrub-free ScrollTrigger to fire the one-shot contact
-     accents. Unlike position:sticky, view-timeline name lookup is NOT broken
-     by an intermediate ancestor's overflow, so .section__anim's
-     overflow:hidden is fine here. */
-  view-timeline-name: --soc-tl;
+     scrub-vignette.js's buildScrubStylesheet() generates @keyframes bound to
+     this timeline from the section's pose data / hermiteSpline / releaseT, so
+     the compositor advances every element 1:1 with scroll offset - no
+     ScrollTrigger scrub catch-up smoothing, which was the laggy-scroll /
+     stop-motion root cause (see AGENTS.md). Each section keeps only a
+     scrub-free ScrollTrigger for its one-shot contact accents. Unlike
+     position:sticky, view-timeline name lookup is NOT broken by an
+     intermediate ancestor's overflow, so .section__anim's overflow:hidden is
+     fine here. Each pinned section declares its own timeline name below. */
   view-timeline-axis: block;
 }
+#sec-soccer { view-timeline-name: --soccer-tl; }
+#sec-basket { view-timeline-name: --basket-tl; }
 .section--pinned .section__pin {
   position: sticky;
   top: 0;
   height: 100vh;
 }
-.soccer-scene {
+.soccer-scene,
+.basket-scene {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
-/* No static will-change for the soccer scrub: Chrome auto-promotes the elements
-   whose scroll-driven CSS animations are running, and dropping back afterwards
-   is cheaper than 12 permanently-promoted SVG layers (see AGENTS.md on layer
+/* No static will-change for the scrub: Chrome auto-promotes the elements whose
+   scroll-driven CSS animations are running, and dropping back afterwards is
+   cheaper than a dozen permanently-promoted SVG layers (see AGENTS.md on layer
    cost). The JS rAF fallback sets will-change:transform on just the ball and
-   kicker joints while it drives them. */
-
-/* ── Ball elements ──────────────────────────────── */
-.basket-ball {
-  position: absolute;
-  width: 34px; height: 34px;
-  top: calc(72% - 34px);
-  left: 8%;
-  will-change: transform;
-}
-
-.basket-shadow {
-  position: absolute;
-  top: calc(72% - 5px); left: calc(8% + 17px);
-  width: 36px; height: 10px;
-  border-radius: 50%;
-  background: rgba(43, 43, 43, 0.22);
-  transform: translateX(-50%) scaleX(0.3);
-  transform-origin: center;
-  will-change: transform, opacity;
-}
+   figure joints while it drives them. */
 
 /* ── Guitar overlays (above canvas) ─────────────── */
 
@@ -331,11 +313,19 @@ em.hero__word { margin-right: 0; font-style: italic; }
   .section__anim { display: none; }
   .section__hint { display: none; }
 
-  /* Collapse the soccer pin back to a normal-height static section instead
-     of leaving its scrub scroll-range (240vh) empty once the animation
+  /* Collapse the pinned sections back to normal-height static sections instead
+     of leaving their scrub scroll-range (240vh) empty once the animation
      driving it is hidden above. */
   .section--pinned { min-height: 90vh; }
   .section--pinned .section__pin { position: relative; height: auto; }
+
+  /* Basketball keeps a single static "made shot" frame in reduced motion (a
+     natural resting composition - the ball at rest in the net - that soccer's
+     mid-flight ball doesn't have). setupBasket() draws it with no rAF and no
+     scrub stylesheet; these overrides give the scene a box to sit in. */
+  #sec-basket .section__anim { display: block; }
+  #sec-basket.section--pinned { min-height: 100vh; }
+  #sec-basket .section__pin { position: relative; height: 78vh; }
 
   * { transition-duration: 0.01ms !important; }
 }

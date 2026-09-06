@@ -1,5 +1,7 @@
 gsap.registerPlugin(ScrollTrigger);
 
+const SV = window.ScrubVignette;
+
 const ACCENTS  = ['#6f8f5e', '#cf8542', '#7d5f86'];
 const DOT_Y    = [9, 61, 113];
 const SECTIONS = ['soccer', 'basket', 'guitar'];
@@ -26,6 +28,10 @@ function init() {
       el.style.transform = 'none';
     });
     document.querySelector('.hero').classList.add('is-loaded');
+    // Soccer stays title + caption only in reduced motion (its scene is never
+    // built). Basketball draws a single static "made shot" frame - it has a
+    // natural resting composition (ball in the net) that reads without motion.
+    setupBasket();
     return;
   }
   setupHeroEntrance();
@@ -73,258 +79,36 @@ function setupHeroEntrance() {
     });
   });
 }
-// Each limb is a static translate anchor (the joint) wrapping a GSAP-rotated
-// pivot at local (0,0), with the child limb's anchor nested inside that
-// pivot. Nesting is what makes a child's rotation compose relative to its
-// parent's *current* angle (shin relative to thigh, forearm relative to
-// upper arm) - a real kinematic chain, not swapped full-body poses.
-const KICK_POSES = {
-  idle:    { torso: -92, armB_u: 100, armB_f: 12,  armF_u: 96,  armF_f: 10,  legP_t: 98,  legP_s: -8,  legP_f: -58, legK_t: 96,  legK_s: -6,  legK_f: -58 },
-  windup:  { torso:-108, armB_u: 40,  armB_f:-20,  armF_u:130,  armF_f: 40,  legP_t:105,  legP_s:-14,  legP_f: -58, legK_t:150,  legK_s: 95,  legK_f: -20 },
-  contact: { torso: -72, armB_u:110,  armB_f: 20,  armF_u: 60,  armF_f:-10,  legP_t:100,  legP_s:-18,  legP_f: -58, legK_t: 34,  legK_s: -6,  legK_f: -70 },
-  follow:  { torso:-100, armB_u: 90,  armB_f: 15,  armF_u: 90,  armF_f: 10,  legP_t:100,  legP_s:-10,  legP_f: -58, legK_t:-25,  legK_s: 10,  legK_f: -40 },
+
+/* ============================================================================
+ * Soccer - decorative scroll-scrub (a figure kicks a ball into the goal)
+ * ----------------------------------------------------------------------------
+ * One of two sections built on the shared scrub-vignette.js module. The kicker
+ * is a stick figure; the ball waits on the ground until the foot arrives
+ * (SOCCER_RELEASE_T) then eases along an offset-path into the goal; the pitch
+ * group squashes once on the make.
+ *
+ * Poses are parent-relative angles (not world-authored - the historical soccer
+ * numbers, kept as-is; only the joint keys were renamed to the neutral scheme).
+ * ==========================================================================*/
+const SOCCER_POSES = {
+  idle:    { torso: -92, arm1_u: 100, arm1_f: 12,  arm2_u: 96,  arm2_f: 10,  leg1_t: 98,  leg1_s: -8,  leg1_f: -58, leg2_t: 96,  leg2_s: -6,  leg2_f: -58 },
+  windup:  { torso:-108, arm1_u: 40,  arm1_f:-20,  arm2_u:130,  arm2_f: 40,  leg1_t:105,  leg1_s:-14,  leg1_f: -58, leg2_t:150,  leg2_s: 95,  leg2_f: -20 },
+  contact: { torso: -72, arm1_u:110,  arm1_f: 20,  arm2_u: 60,  arm2_f:-10,  leg1_t:100,  leg1_s:-18,  leg1_f: -58, leg2_t: 34,  leg2_s: -6,  leg2_f: -70 },
+  follow:  { torso:-100, arm1_u: 90,  arm1_f: 15,  arm2_u: 90,  arm2_f: 10,  leg1_t:100,  leg1_s:-10,  leg1_f: -58, leg2_t:-25,  leg2_s: 10,  leg2_f: -40 },
 };
-// Scroll-fraction position of each named pose along the kick. Shared with
-// the ball's CONTACT_T gate below (KICK_T.contact) so both stay in lockstep
-// if the kick's timing is ever retuned.
-const KICK_T = { idle: 0, windup: 0.10, contact: 0.14, follow: 0.20 };
-
-// Captain review (follow-up 3): the kicker's joints previously animated via
-// 3 chained GSAP tweens (idle->windup->contact->follow), each with its own
-// ease. Values were already continuous (a tween always starts from the
-// current value), but *velocity* wasn't - power3.in accelerates hard into
-// the end of the contact tween, then power2.out restarts its own, much
-// slower deceleration curve for follow, producing a real motion "kink"
-// right at KICK_T.contact (measured: adjacent-sample jump of ~5.7deg per
-// 0.0005 progress step, versus ~0 elsewhere). A clamped cubic Hermite
-// spline through all 4 poses - the same "evaluate a continuous formula of
-// the current scroll fraction" standard the ball's offset-path flight already
-// meets - fixes this by construction: each interior knot's tangent is
-// shared by both adjoining segments, so velocity matches on both sides of
-// every pose, not just position. `knots` is `[{t, v}, ...]` sorted by t;
-// endpoints are clamped to zero velocity (idle is a rest state, follow is
-// held while the figure fades out, so both are physically at rest).
-function hermiteSpline(knots) {
-  const n = knots.length;
-  const tangents = knots.map((k, i) => {
-    if (i === 0 || i === n - 1) return 0;
-    const prev = knots[i - 1], next = knots[i + 1];
-    return (next.v - prev.v) / (next.t - prev.t);
-  });
-  return function (t) {
-    if (t <= knots[0].t) return knots[0].v;
-    if (t >= knots[n - 1].t) return knots[n - 1].v;
-    let i = 0;
-    while (i < n - 2 && t > knots[i + 1].t) i++;
-    const t0 = knots[i].t, t1 = knots[i + 1].t;
-    const v0 = knots[i].v, v1 = knots[i + 1].v;
-    const m0 = tangents[i], m1 = tangents[i + 1];
-    const dt = t1 - t0;
-    const s = (t - t0) / dt;
-    const s2 = s * s, s3 = s2 * s;
-    const h00 = 2 * s3 - 3 * s2 + 1;
-    const h10 = s3 - 2 * s2 + s;
-    const h01 = -2 * s3 + 3 * s2;
-    const h11 = s3 - s2;
-    return h00 * v0 + h10 * dt * m0 + h01 * v1 + h11 * dt * m1;
-  };
-}
-
-function buildKicker(svg, restPt) {
-  const NS = 'http://www.w3.org/2000/svg';
-  const rc = rough.svg(svg);
-  const STROKE = { stroke: '#2b2b2b', roughness: 1.3, bowing: 0.7 };
-  const LEN = { torso: 30, neck: 10, thigh: 24, shin: 22, foot: 11, upperArm: 15, forearm: 13 };
-  const hip = { x: restPt.x - 30, y: restPt.y - 24 };
-
-  const root = document.createElementNS(NS, 'g');
-  root.setAttribute('class', 'kicker-figure');
-  root.setAttribute('transform', 'translate(' + hip.x + ',' + hip.y + ')');
-  svg.insertBefore(root, svg.querySelector('.shot-path'));
-
-  function seg(parent, length, opts) {
-    const pivot = document.createElementNS(NS, 'g');
-    parent.appendChild(pivot);
-    pivot.appendChild(rc.line(0, 0, length, 0, Object.assign({}, STROKE, opts)));
-    return pivot;
-  }
-  function anchorAt(parent, x, y) {
-    const a = document.createElementNS(NS, 'g');
-    a.setAttribute('transform', 'translate(' + x + ',' + y + ')');
-    parent.appendChild(a);
-    return a;
-  }
-  function leg() {
-    const thigh = seg(root, LEN.thigh, { strokeWidth: 2.6 });
-    const shin = seg(anchorAt(thigh, LEN.thigh, 0), LEN.shin, { strokeWidth: 2.2 });
-    const foot = seg(anchorAt(shin, LEN.shin, 0), LEN.foot, { strokeWidth: 1.9 });
-    return { thigh: thigh, shin: shin, foot: foot };
-  }
-  function arm(shoulder) {
-    const upper = seg(shoulder, LEN.upperArm, { strokeWidth: 1.9 });
-    const fore = seg(anchorAt(upper, LEN.upperArm, 0), LEN.forearm, { strokeWidth: 1.7 });
-    return { upper: upper, fore: fore };
-  }
-
-  const torso = seg(root, LEN.torso, { strokeWidth: 2.4 });
-  const shoulder = anchorAt(torso, LEN.torso * 0.86, 0);
-  const armBack = arm(shoulder);
-  const armFront = arm(shoulder);
-  const legPlant = leg();
-  const legKick = leg();
-  // Head anchored beyond the torso tip (torso length + a neck gap, not at
-  // the tip itself) and appended after the shoulder/arms - previously it sat
-  // almost exactly at the shoulder point and, being appended first, painted
-  // *behind* the arms (SVG paints in document order). Captain review: head
-  // must read as clearly above the shoulders/arms, at rest and through the
-  // kick.
-  const headAnchor = anchorAt(torso, LEN.torso + LEN.neck, 0);
-  headAnchor.appendChild(rc.circle(0, 0, 17, Object.assign({}, STROKE, { fill: 'none', strokeWidth: 1.7 })));
-
-  const jointEls = {
-    torso: torso,
-    armB_u: armBack.upper, armB_f: armBack.fore,
-    armF_u: armFront.upper, armF_f: armFront.fore,
-    legP_t: legPlant.thigh, legP_s: legPlant.shin, legP_f: legPlant.foot,
-    legK_t: legKick.thigh, legK_s: legKick.shin, legK_f: legKick.foot,
-  };
-  const jointSplines = {};
-  Object.keys(jointEls).forEach(function (k) {
-    // Each pivot's rough.js line is drawn from local (0,0), so a CSS
-    // transform-origin of '0 0' pins rotation (CSS `rotate` from the generated
-    // keyframes, or `transform` from svgRotationDriver in the JS fallback) to
-    // the actual joint rather than the SVG viewBox origin.
-    jointEls[k].style.transformOrigin = '0 0';
-    jointEls[k].classList.add('j-' + k);
-    jointSplines[k] = hermiteSpline([
-      { t: KICK_T.idle, v: KICK_POSES.idle[k] },
-      { t: KICK_T.windup, v: KICK_POSES.windup[k] },
-      { t: KICK_T.contact, v: KICK_POSES.contact[k] },
-      { t: KICK_T.follow, v: KICK_POSES.follow[k] },
-    ]);
-  });
-
-  return { root: root, jointEls: jointEls, jointSplines: jointSplines };
-}
-
-// Build the stylesheet that drives the whole soccer scroll-scrub off the
-// native CSS scroll-driven timeline declared on .section--pinned (see
-// style.css). Every value is a plain @keyframes bound to `--soc-tl`, so the
-// compositor advances motion 1:1 with scroll offset - no ScrollTrigger scrub
-// (a *numeric* scrub is a time-based catch-up smoother, not a 1:1 link: on a
-// fast trackpad flick it renders up to ~15% of the timeline behind scroll and
-// keeps animating 150-350ms after input stops, and its rendered per-frame
-// velocity over/undershoots ~+-50% even on smooth input - the laggy-scroll /
-// stop-motion-ball root cause, see AGENTS.md).
-//
-// The keyframes are generated (not hand-written) from the same KICK_POSES /
-// hermiteSpline / KICK_T the kicker has always used, so:
-//  - the ball / trail / shadow flight stays gated to KICK_T.contact (the
-//    captain-review scroll fraction the kicker's contact pose resolves at) -
-//    scrub to any earlier point and only the windup shows, never the ball;
-//  - retiming KICK_POSES / KICK_T and regenerating reproduces the round-3
-//    joint value+velocity continuity guarantee automatically (hermiteSpline
-//    gives it by construction; sampling into ~48 keyframes/joint preserves it).
-function buildSoccerScrubCSS(opts) {
-  const jointSplines = opts.jointSplines;
-  const pathLen = opts.pathLen;
-  const offsetPath = opts.offsetPath;
-  const FOLLOW_T = KICK_T.follow;
-  const contactPct = +(CONTACT_T * 100).toFixed(3);
-  const followPct = +(FOLLOW_T * 100).toFixed(3);
-  const fadeEndPct = +((FOLLOW_T + 0.08) * 100).toFixed(3);
-  const shadowEndPct = +(SHADOW_END_T * 100).toFixed(3);
-
-  // Ball flight is eased out of rest (ballFlightEase) so a fast flick or the
-  // keyframe sampling can't snap it onto the path in one frame (the ~25px
-  // CONTACT_T pop). Sampled into keyframes here; the JS fallback evaluates the
-  // same function directly.
-  const BALL_STEPS = 40;
-  let ballKf = '0%,' + contactPct + '%{offset-distance:0%}';
-  let trailKf = '0%,' + contactPct + '%{stroke-dashoffset:' + pathLen.toFixed(2) + '}';
-  for (let i = 1; i <= BALL_STEPS; i++) {
-    const f = i / BALL_STEPS;
-    const pct = ((CONTACT_T + f * (1 - CONTACT_T)) * 100).toFixed(3);
-    const d = ballFlightEase(f);
-    ballKf += pct + '%{offset-distance:' + (d * 100).toFixed(3) + '%}';
-    trailKf += pct + '%{stroke-dashoffset:' + (pathLen * (1 - d)).toFixed(2) + '}';
-  }
-
-  const JOINT_STEPS = 48;
-  let jointCss = '';
-  Object.keys(jointSplines).forEach(function (k) {
-    let frames = '';
-    for (let i = 0; i <= JOINT_STEPS; i++) {
-      const prog = (i / JOINT_STEPS) * FOLLOW_T;      // scroll fraction 0..FOLLOW_T
-      frames += (prog * 100).toFixed(4) + '%{rotate:' + jointSplines[k](prog).toFixed(3) + 'deg}';
-    }
-    // Held flat from FOLLOW_T to the end of the scroll range.
-    frames += '100%{rotate:' + jointSplines[k](FOLLOW_T).toFixed(3) + 'deg}';
-    jointCss +=
-      '@keyframes soc-j-' + k + '{' + frames + '}' +
-      '.soccer-scene .j-' + k + '{rotate:' + KICK_POSES.idle[k].toFixed(3) + 'deg;' +
-      'animation:soc-j-' + k + ' linear both;animation-timeline:--soc-tl;' +
-      'animation-range:contain 0% contain 100%}';
-  });
-
-  const R = 'animation-timeline:--soc-tl;animation-range:contain 0% contain 100%';
-  return [
-    '@keyframes soc-ball{' + ballKf + '100%{offset-distance:100%}}',
-    '@keyframes soc-trail{' + trailKf + '100%{stroke-dashoffset:0}}',
-    '@keyframes soc-shadow{0%,' + contactPct + '%{opacity:1}' + shadowEndPct + '%,100%{opacity:.05}}',
-    '@keyframes soc-crowd{from{translate:0 0}to{translate:-22px 0}}',
-    '@keyframes soc-pitch{from{translate:0 0}to{translate:-8px 0}}',
-    '@keyframes soc-kicker-fade{0%,' + followPct + '%{opacity:1}' + fadeEndPct + '%,100%{opacity:0}}',
-    '.soccer-scene .ball-group{offset-path:path("' + offsetPath + '");offset-rotate:0deg;' +
-      'offset-distance:0%;animation:soc-ball linear both;' + R + '}',
-    '.soccer-scene .chalk-trail{animation:soc-trail linear both;' + R + '}',
-    '.soccer-scene .ball-shadow{animation:soc-shadow linear both;' + R + '}',
-    '.soccer-scene .layer-crowd{animation:soc-crowd linear both;' + R + '}',
-    '.soccer-scene .layer-pitch{animation:soc-pitch linear both;' + R + '}',
-    '.soccer-scene .kicker-figure{animation:soc-kicker-fade linear both;' + R + '}',
-    jointCss,
-  ].join('\n');
-}
-
-// GSAP always writes SVG <g>/<path> transforms via the `transform` *attribute*
-// (confirmed directly against this GSAP version - unaffected by transformOrigin),
-// which triggers Blink's SVG-specific layout invalidation on every write. That's
-// cheap for a one-off tween but measurably costly for something transformed on
-// every frame throughout a scroll (profiled while diagnosing scroll jank here -
-// see AGENTS.md). Tweening a plain proxy object instead and applying the result
-// through the element's CSS `transform` *style* keeps continuous per-frame
-// position updates on the compositor-only transform path. The soccer happy path
-// no longer needs this (its scrub is native CSS scroll-driven animation), but
-// it stays for the JS fallback (setupSoccerFallback) and for basketball/guitar.
-function svgTransformDriver(el) {
-  const state = { x: 0, y: 0, scaleY: 1 };
-  function apply() {
-    el.style.transform = 'translate(' + state.x + 'px,' + state.y + 'px) scaleY(' + state.scaleY + ')';
-  }
-  apply();
-  return { state: state, apply: apply };
-}
-
-// Same rationale as svgTransformDriver, for a single joint's rotation: each
-// pivot is rotated every frame during the kick window, which otherwise hits the
-// same SVG-attribute layout-invalidation path. Used by the JS fallback for the
-// kicker figure (the happy path rotates the joints via generated CSS keyframes).
-function svgRotationDriver(el, initialDeg) {
-  const state = { rotation: initialDeg || 0 };
-  el.style.transformOrigin = '0 0';
-  function apply() {
-    el.style.transform = 'rotate(' + state.rotation + 'deg)';
-  }
-  apply();
-  return { state: state, apply: apply };
-}
+// Scroll-fraction position of each pose. SOCCER_RELEASE_T (= contact) gates the
+// ball: scrub to any earlier point and only the wind-up shows, never the ball.
+const SOCCER_T = { idle: 0, windup: 0.10, contact: 0.14, follow: 0.20 };
+const SOCCER_RELEASE_T   = SOCCER_T.contact;
+// Shadow fades over the first 75% of the flight (matches the pre-module tween's
+// duration). Derived so a SOCCER_T retime carries it, like every other value.
+const SOCCER_SHADOW_END_T = SOCCER_RELEASE_T + (1 - SOCCER_RELEASE_T) * 0.75;
 
 // Static hand-drawn scene, drawn exactly once. The sketch character comes from
-// rough.js roughness/bowing on the elements themselves - no live SVG wobble
-// filter (feTurbulence/feDisplacementMap on a scrub-driven or parallax group is
-// a real per-frame GPU re-raster cost, see AGENTS.md) and no mid-scroll
-// rough.js redraw (settleRedraw, removed: it regenerated a filtered group as a
-// synchronous main-thread task at scroll fraction ~0.616, mid-arc).
+// rough.js roughness/bowing on the elements - no live SVG wobble filter (a real
+// per-frame GPU re-raster cost on a scrub, see AGENTS.md) and no mid-scroll
+// rough.js redraw.
 function buildSoccerScene(svg) {
   const rc = rough.svg(svg);
   const geo = {
@@ -378,6 +162,358 @@ function buildSoccerScene(svg) {
   drawPitch();
 }
 
+function setupSoccer() {
+  const section = document.getElementById('sec-soccer');
+  const svg     = section.querySelector('.soccer-scene');
+  const pitch   = svg.querySelector('.layer-pitch');
+  const path    = svg.querySelector('.shot-path');
+  const trail   = svg.querySelector('.chalk-trail');
+  const impactPoint = { x: 592, y: 178 };
+
+  buildSoccerScene(svg);
+  const len = path.getTotalLength();
+  const restPt = path.getPointAtLength(0);
+  trail.style.strokeDasharray = len;
+  trail.style.strokeDashoffset = len;
+
+  const figure = SV.buildStickFigure(svg, {
+    anchor: { x: restPt.x - 30, y: restPt.y - 24 },
+    poses: SOCCER_POSES,
+    times: SOCCER_T,
+    rootClass: 'kicker-figure',
+    insertBefore: path,
+  });
+
+  const flightEase = SV.easeOutOfRest(0.035);
+  const shadowEndPct = +(SOCCER_SHADOW_END_T * 100).toFixed(3);
+  const releasePct   = +(SOCCER_RELEASE_T * 100).toFixed(3);
+
+  const style = document.createElement('style');
+  style.id = 'soccer-scrub-keyframes';
+  style.textContent = SV.buildScrubStylesheet({
+    ns: 'soccer',
+    timeline: '--soccer-tl',
+    scene: '.soccer-scene',
+    figure: { jointSplines: figure.jointSplines, idlePose: figure.idlePose, endT: SOCCER_T.follow },
+    ball:  { selector: '.ball-group', offsetPath: path.getAttribute('d'), releaseT: SOCCER_RELEASE_T, ease: flightEase },
+    trail: { selector: '.chalk-trail', length: len, releaseT: SOCCER_RELEASE_T, ease: flightEase },
+    tracks: [
+      { selector: '.ball-shadow', property: 'opacity', keyframes: [
+        [0, '1'], [releasePct, '1'], [shadowEndPct, '.05'], [100, '.05'] ] },
+      { selector: '.layer-crowd', property: 'translate', keyframes: [[0, '0 0'], [100, '-22px 0']] },
+      { selector: '.layer-pitch', property: 'translate', keyframes: [[0, '0 0'], [100, '-8px 0']] },
+      { selector: '.kicker-figure', property: 'opacity', fade: { holdUntilT: SOCCER_T.follow, endT: SOCCER_T.follow + 0.08 } },
+    ],
+  });
+  document.head.appendChild(style);
+
+  // netPulse uses the CSS `transform` property (scaleY); the parallax keyframes
+  // use the independent `translate` property - no conflict.
+  const pitchDrv = SV.svgTransformDriver(pitch);
+  pitch.style.transformBox = 'fill-box';
+  pitch.style.transformOrigin = '92% 55%';
+
+  svg.dataset.driver = SV.supportsScrollDrivenAnimation() ? 'native' : 'fallback';
+  if (svg.dataset.driver === 'fallback') {
+    SV.pinnedScrubFallback({
+      section,
+      channels: [
+        SV.figureJointsChannel(figure.jointEls, figure.jointSplines, SOCCER_T.follow),
+        SV.offsetPathChannel(svg.querySelector('.ball-group'), path, len, flightEase, SOCCER_RELEASE_T),
+        SV.dashChannel(trail, len, flightEase, SOCCER_RELEASE_T),
+        SV.styleChannel(svg.querySelector('.ball-shadow'), 'opacity', p => {
+          const sf = Math.max(0, Math.min(1, (p - SOCCER_RELEASE_T) / (SOCCER_SHADOW_END_T - SOCCER_RELEASE_T)));
+          return String(1 - 0.95 * sf);
+        }),
+        SV.translateChannel(svg.querySelector('.layer-crowd'), p => (-22 * p) + 'px 0'),
+        SV.translateChannel(pitch, p => (-8 * p) + 'px 0'),
+        SV.fadeChannel(figure.root, SOCCER_T.follow, SOCCER_T.follow + 0.08),
+      ],
+    });
+  }
+
+  // A scrub-free progress watcher - no timeline attached, so it cannot
+  // reintroduce catch-up lag - purely to fire the one-shot contact accents once
+  // at the end of the flight.
+  let flourished = false;
+  ScrollTrigger.create({
+    trigger: section.querySelector('.section__anim'), start: 'top top',
+    endTrigger: section, end: 'bottom bottom',
+    onUpdate(self) {
+      if (!flourished && self.progress > 0.97) {
+        flourished = true;
+        impactFlourish(svg, impactPoint, '#6f8f5e');
+        netPulse(pitchDrv);
+      }
+      if (self.progress < 0.9) { flourished = false; }
+    },
+  });
+}
+
+/* ============================================================================
+ * Basketball - decorative scroll-scrub (a figure rises for a jump shot)
+ * ----------------------------------------------------------------------------
+ * The second section on the shared module. Choreography:
+ *   stand -> gather (deep dip) -> rise -> apex release -> land, absorb -> watch
+ * The whole figure leaves the ground on a jump arc baked from two hermite
+ * splines (BASKET_JX / BASKET_JY, a translate track on .figure-root). Through
+ * stand -> gather -> rise the ball is locked to the shooting hand: the
+ * .ball-carry wrapper carries a translate of (hand(t) - releasePoint) read
+ * straight off the figure's forward kinematics, and the inner .ball-group sits
+ * at offset-distance 0% (the first point of the arc = the release point). At
+ * BASKET_RELEASE_T the carry translate is exactly [0,0], so the ball hands off
+ * onto the offset-path with no positional jump and arcs into the rim; the net
+ * drape sways once on the make.
+ *
+ * Poses are authored in WORLD angles (0 = toward the hoop, -90 = straight up)
+ * and converted with SV.worldPose().
+ * ==========================================================================*/
+// WORLD angles: 0 = toward the hoop (right), -90 = straight up, +90 = straight
+// down. leg1 = front leg, leg2 = trail leg. Legs keep a visible knee bend
+// through the jump so the figure reads as a body, not a pole.
+const BASKET_POSES = {
+  stand:  { torso: -85, arm1_u: 60,  arm1_f: 22,  arm2_u: 72,  arm2_f: 28,  leg1_t: 83,  leg1_s: 92,  leg1_f: 6,   leg2_t: 97,  leg2_s: 89,  leg2_f: 6 },
+  gather: { torso: -66, arm1_u: 76,  arm1_f: 44,  arm2_u: 90,  arm2_f: 48,  leg1_t: 70,  leg1_s: 116, leg1_f: 20,  leg2_t: 62,  leg2_s: 120, leg2_f: 18 },
+  rise:   { torso: -86, arm1_u: 4,   arm1_f: -58, arm2_u: -8,  arm2_f: -52, leg1_t: 84,  leg1_s: 104, leg1_f: 52,  leg2_t: 92,  leg2_s: 108, leg2_f: 54 },
+  apex:   { torso: -90, arm1_u: -77, arm1_f: -90, arm2_u: -22, arm2_f: 20,  leg1_t: 72,  leg1_s: 122, leg1_f: 60,  leg2_t: 104, leg2_s: 96,  leg2_f: 64 },
+  land:   { torso: -82, arm1_u: -58, arm1_f: -46, arm2_u: 44,  arm2_f: 64,  leg1_t: 66,  leg1_s: 118, leg1_f: 8,   leg2_t: 94,  leg2_s: 114, leg2_f: 12 },
+  watch:  { torso: -89, arm1_u: -46, arm1_f: -36, arm2_u: 70,  arm2_f: 24,  leg1_t: 84,  leg1_s: 91,  leg1_f: 6,   leg2_t: 96,  leg2_s: 89,  leg2_f: 6 },
+};
+// Timing: the shot motion (gather -> rise -> apex) spans ~15% of the scroll so
+// the arm snap has room to breathe; the figure settles by ~watch and then holds
+// while the ball completes its flight over the remaining ~54%.
+const BASKET_T = { stand: 0, gather: 0.12, rise: 0.22, apex: 0.30, land: 0.42, watch: 0.52 };
+const BASKET_RELEASE_T = BASKET_T.apex;
+
+// The jump arc: px offset of the whole figure vs scroll fraction (lift peaks at
+// the apex/release, back on the ground by ~land).
+const BASKET_JX = [
+  { t: 0, v: 0 }, { t: 0.15, v: 0 }, { t: 0.30, v: 5 }, { t: 0.44, v: 11 }, { t: 1, v: 11 },
+];
+const BASKET_JY = [
+  { t: 0, v: 0 }, { t: 0.12, v: 7 }, { t: 0.22, v: -16 }, { t: 0.30, v: -52 },
+  { t: 0.38, v: -16 }, { t: 0.44, v: 3 }, { t: 0.52, v: 0 }, { t: 1, v: 0 },
+];
+// figure-shadow opacity vs timeline %: full at rest, faint while airborne
+// (gather -> land), back once the feet are down. One source for the CSS track
+// and the JS fallback so they can't drift.
+const BASKET_SHADOW_KF = [[0, 0.30], [9, 0.30], [20, 0.10], [34, 0.10], [46, 0.30], [100, 0.30]];
+
+function lerpKeyframes(kf, p) {
+  const x = p * 100;
+  if (x <= kf[0][0]) return kf[0][1];
+  for (let i = 1; i < kf.length; i++) {
+    if (x <= kf[i][0]) {
+      const [x0, v0] = kf[i - 1], [x1, v1] = kf[i];
+      return v0 + (v1 - v0) * (x - x0) / (x1 - x0);
+    }
+  }
+  return kf[kf.length - 1][1];
+}
+
+function buildBasketScene(svg) {
+  const rc = rough.svg(svg);
+  const NS = 'http://www.w3.org/2000/svg';
+  const INK = '#2b2b2b';
+  const BASKET = '#cf8542';
+  const rim = { x: 545, y: 128, rx: 30 };
+  const poleX = 622;
+  const floorY = 300;
+
+  function replace(className, node) {
+    const host = svg.querySelector('.' + className);
+    host.innerHTML = '';
+    host.appendChild(node);
+  }
+  const g = () => document.createElementNS(NS, 'g');
+
+  // Clerestory window band across the top (parallax-fast) - the crowd analogue.
+  const crowd = g();
+  crowd.setAttribute('opacity', '0.1');
+  for (let x = 20; x < 660; x += 96) {
+    crowd.appendChild(rc.rectangle(x, 12, 62, 34, { stroke: INK, strokeWidth: 0.8, roughness: 1.6, fill: 'none' }));
+    crowd.appendChild(rc.line(x + 31, 12, x + 31, 46, { stroke: INK, strokeWidth: 0.4, roughness: 1.6 }));
+  }
+  replace('layer-crowd', crowd);
+
+  // One flat floor line (parallax-slow) - the soccer pitch-line analogue,
+  // kept deliberately minimal.
+  const court = g();
+  court.appendChild(rc.line(-40, floorY, 700, floorY, { stroke: BASKET, strokeWidth: 1.7, roughness: 0.8 }));
+  replace('layer-court', court);
+
+  // Front-3/4 hoop: bracket + pole, backboard, shooter's square, rim ellipse,
+  // net drape (its own class so the make can sway it).
+  const hoop = g();
+  hoop.appendChild(rc.line(rim.x + rim.rx, rim.y - 6, poleX, rim.y - 16, { stroke: INK, strokeWidth: 2, roughness: 0.9, bowing: 0 }));
+  hoop.appendChild(rc.line(poleX, rim.y - 22, poleX, floorY, { stroke: INK, strokeWidth: 2.4, roughness: 0.8, bowing: 0 }));
+  hoop.appendChild(rc.rectangle(rim.x - 23, rim.y - 58, 46, 52, { stroke: INK, strokeWidth: 1.8, roughness: 0.9, bowing: 0.3, fill: 'none' }));
+  hoop.appendChild(rc.rectangle(rim.x - 9, rim.y - 26, 18, 13, { stroke: INK, strokeWidth: 1.1, roughness: 1.0, fill: 'none' }));
+  hoop.appendChild(rc.ellipse(rim.x, rim.y, rim.rx * 2, 9, { stroke: BASKET, strokeWidth: 2.6, roughness: 1.0 }));
+
+  const net = g();
+  net.setAttribute('class', 'net-drape');
+  const rungs = 4, netH = 30;
+  for (let i = 0; i <= rungs; i++) {
+    const fromX = rim.x - rim.rx + (rim.rx * 2 / rungs) * i;
+    const mid = (i - rungs / 2) / (rungs / 2);
+    const toX = rim.x + mid * rim.rx * 0.42;
+    net.appendChild(rc.line(fromX, rim.y + 3, toX, rim.y + netH, { stroke: INK, strokeWidth: 0.9, roughness: 0.8 }));
+  }
+  net.appendChild(rc.line(rim.x - rim.rx * 0.66, rim.y + 15, rim.x + rim.rx * 0.66, rim.y + 15, { stroke: INK, strokeWidth: 0.8, roughness: 0.9 }));
+  hoop.appendChild(net);
+  replace('layer-hoop', hoop);
+
+  return { rim, floorY };
+}
+
+function setupBasket() {
+  const section  = document.getElementById('sec-basket');
+  const svg      = section.querySelector('.basket-scene');
+  const path     = svg.querySelector('.shot-path');
+  const trail    = svg.querySelector('.arc-trail');
+  const carry    = svg.querySelector('.ball-carry');
+  const ball     = svg.querySelector('.ball-group');
+  const shadow   = svg.querySelector('.figure-shadow');
+
+  const scene = buildBasketScene(svg);
+
+  const jx = SV.hermiteSpline(BASKET_JX);
+  const jy = SV.hermiteSpline(BASKET_JY);
+  const rootTranslate = t => [jx(t), jy(t)];
+
+  const poses = {};
+  Object.keys(BASKET_POSES).forEach(k => { poses[k] = SV.worldPose(BASKET_POSES[k]); });
+
+  const figure = SV.buildStickFigure(svg, {
+    anchor: { x: 236, y: 236 },
+    lengths: { neck: 13, torso: 32, thigh: 29, shin: 27, foot: 9, upperArm: 17, forearm: 15 },
+    legWidths: [3.8, 3.2, 2.5],
+    armWidths: [2.5, 2.2],
+    poses,
+    times: BASKET_T,
+    stroke: { roughness: 1.1, bowing: 0.5 },
+    rootClass: 'figure-root',
+    insertBefore: path,
+    rootTranslate,
+  });
+
+  // Release point = the actual shooting-hand transform at BASKET_RELEASE_T
+  // (with the jump offset baked in via fk). The ball path starts here exactly.
+  const rp  = figure.fk(BASKET_RELEASE_T).hand1;
+  const rim = scene.rim;
+  const netRest = { x: rim.x + 2, y: rim.y + 36 };
+
+  // Flight arc: a calm rainbow from the release point (the hand) into the rim,
+  // then a short drop through the net (the ball path only - the chalk trail
+  // stops at the rim).
+  const f1 = n => n.toFixed(1);
+  const peakY = Math.min(rp.y, rim.y) - 64;
+  const arcD =
+    `M${f1(rp.x)},${f1(rp.y)} ` +
+    `C ${f1(rp.x + 86)},${f1(peakY)} ${f1(rim.x - 104)},${f1(peakY + 6)} ${f1(rim.x)},${f1(rim.y)}`;
+  const ballD = arcD +
+    ` C ${f1(rim.x + 11)},${f1(rim.y + 15)} ${f1(netRest.x + 3)},${f1(netRest.y - 10)} ${f1(netRest.x)},${f1(netRest.y)}`;
+
+  path.setAttribute('d', ballD);
+  trail.setAttribute('d', arcD);
+  const trailLen = trail.getTotalLength();
+  trail.style.strokeDasharray = trailLen;
+  trail.style.strokeDashoffset = trailLen;
+
+  shadow.setAttribute('cx', f1(figure.fk(0).hip.x + 4));
+  shadow.setAttribute('cy', f1(scene.floorY + 2));
+
+  const flightEase = SV.easeOutOfRest(0.05);
+  // (hand(t) - releasePoint): the carry wrapper's translate. Clamped at
+  // BASKET_RELEASE_T so it is exactly [0,0] at (and after) the handoff.
+  const carryFn = t => {
+    const h = figure.fk(Math.min(t, BASKET_RELEASE_T)).hand1;
+    return [h.x - rp.x, h.y - rp.y];
+  };
+
+  const netDrape = svg.querySelector('.net-drape');
+  netDrape.style.transformBox = 'fill-box';
+  netDrape.style.transformOrigin = '50% 0';
+  const netDrv = SV.svgTransformDriver(netDrape);
+
+  // ---- reduced motion: one static "made shot" frame, no rAF, no scrub CSS ---
+  if (REDUCED) {
+    SV.FIGURE_JOINTS.forEach(k => {
+      figure.jointEls[k].style.rotate = figure.jointSplines[k](BASKET_T.watch) + 'deg';
+    });
+    figure.root.style.translate = '0px 0px';
+    ball.style.offsetPath = 'none';
+    ball.style.transform = `translate(${f1(netRest.x)}px, ${f1(netRest.y)}px)`;
+    shadow.style.opacity = '0.3';
+    trail.style.strokeDashoffset = '0';
+    trail.style.opacity = '0.26';
+    return;
+  }
+
+  const releasePct = +(BASKET_RELEASE_T * 100).toFixed(3);
+  const style = document.createElement('style');
+  style.id = 'basket-scrub-keyframes';
+  style.textContent = SV.buildScrubStylesheet({
+    ns: 'basket',
+    timeline: '--basket-tl',
+    scene: '.basket-scene',
+    figure: { jointSplines: figure.jointSplines, idlePose: figure.idlePose, endT: BASKET_T.watch },
+    ball:  { selector: '.ball-group', offsetPath: ballD, releaseT: BASKET_RELEASE_T, ease: flightEase },
+    trail: { selector: '.arc-trail', length: trailLen, releaseT: BASKET_RELEASE_T, ease: flightEase },
+    carry: { selector: '.ball-carry', translateFn: carryFn, untilT: BASKET_RELEASE_T, steps: 80 },
+    tracks: [
+      { selector: '.figure-shadow', property: 'opacity',
+        keyframes: BASKET_SHADOW_KF.map(([pct, v]) => [pct, String(v)]) },
+      { selector: '.figure-root', property: 'translate',
+        spline: p => `${jx(p).toFixed(2)}px ${jy(p).toFixed(2)}px`, from: 0, to: 1, steps: 52 },
+      { selector: '.layer-court', property: 'translate', keyframes: [[0, '0 0'], [100, '-8px 0']] },
+      { selector: '.layer-crowd', property: 'translate', keyframes: [[0, '0 0'], [100, '-24px 0']] },
+    ],
+  });
+  document.head.appendChild(style);
+
+  svg.dataset.driver = SV.supportsScrollDrivenAnimation() ? 'native' : 'fallback';
+  if (svg.dataset.driver === 'fallback') {
+    SV.pinnedScrubFallback({
+      section,
+      channels: [
+        SV.figureJointsChannel(figure.jointEls, figure.jointSplines, BASKET_T.watch),
+        SV.translateChannel(figure.root, p => `${jx(p).toFixed(2)}px ${jy(p).toFixed(2)}px`),
+        SV.translateChannel(carry, p => {
+          const c = carryFn(Math.min(p, BASKET_RELEASE_T));
+          return `${c[0].toFixed(2)}px ${c[1].toFixed(2)}px`;
+        }),
+        SV.offsetPathChannel(ball, path, path.getTotalLength(), flightEase, BASKET_RELEASE_T),
+        SV.dashChannel(trail, trailLen, flightEase, BASKET_RELEASE_T),
+        SV.styleChannel(shadow, 'opacity', p => String(lerpKeyframes(BASKET_SHADOW_KF, p))),
+        SV.translateChannel(svg.querySelector('.layer-court'), p => (-8 * p) + 'px 0'),
+        SV.translateChannel(svg.querySelector('.layer-crowd'), p => (-24 * p) + 'px 0'),
+      ],
+    });
+  }
+
+  // Scrub-free one-shot accents: the ink flourish at the release point, and the
+  // net drape sway when the ball reaches the rim. Same pattern as soccer's
+  // netPulse - no timeline attached, so no catch-up lag.
+  const makeP = BASKET_RELEASE_T + (1 - BASKET_RELEASE_T) * 0.9;
+  let flourished = false, made = false;
+  ScrollTrigger.create({
+    trigger: section.querySelector('.section__anim'), start: 'top top',
+    endTrigger: section, end: 'bottom bottom',
+    onUpdate(self) {
+      const p = self.progress;
+      if (!flourished && p > BASKET_RELEASE_T) {
+        flourished = true;
+        impactFlourish(svg, rp, '#cf8542');
+      }
+      if (flourished && p < BASKET_RELEASE_T - 0.03) { flourished = false; }
+      if (!made && p > makeP) { made = true; netSway(netDrv); }
+      if (made && p < makeP - 0.03) { made = false; }
+    },
+  });
+}
+
 function impactFlourish(svg, point, color) {
   const NS = 'http://www.w3.org/2000/svg';
   const layer = svg.querySelector('.layer-flourish');
@@ -413,276 +549,10 @@ function netPulse(pitchDrv) {
   });
 }
 
-// The scroll fraction the kicker's spline reaches its contact pose at (and, by
-// construction, the point the generated ball/trail/shadow keyframes hold flat
-// until). Single source, shared with the JS fallback.
-const CONTACT_T = KICK_T.contact;
-// Scroll fraction the ball shadow finishes fading at: the flight starts at
-// CONTACT_T and the shadow fades over its first 75% (matches the pre-refactor
-// GSAP tween's `duration: FLIGHT_D * 0.75`). Kept derived so a KICK_T retime
-// carries it, like every other timing value in buildSoccerScrubCSS.
-const SHADOW_END_T = CONTACT_T + (1 - CONTACT_T) * 0.75;
-
-function setupSoccer() {
-  const section = document.getElementById('sec-soccer');
-  const svg     = section.querySelector('.soccer-scene');
-  const pitch   = svg.querySelector('.layer-pitch');
-  const path    = svg.querySelector('.shot-path');
-  const trail   = svg.querySelector('.chalk-trail');
-  const impactPoint = { x: 592, y: 178 };
-
-  buildSoccerScene(svg);
-  const len = path.getTotalLength();
-  const restPt = path.getPointAtLength(0);
-  trail.style.strokeDasharray = len;
-  trail.style.strokeDashoffset = len;
-
-  const kicker = buildKicker(svg, restPt);
-
-  // Drive the whole scrub off a native CSS scroll-driven timeline: the
-  // compositor advances every element 1:1 with scroll offset, no ScrollTrigger
-  // scrub. Keyframes are generated from KICK_POSES / hermiteSpline / CONTACT_T
-  // (see buildSoccerScrubCSS).
-  const style = document.createElement('style');
-  style.id = 'soccer-scrub-keyframes';
-  style.textContent = buildSoccerScrubCSS({
-    jointSplines: kicker.jointSplines,
-    pathLen: len,
-    offsetPath: path.getAttribute('d'),
-  });
-  document.head.appendChild(style);
-
-  // netPulse uses the CSS `transform` property (scaleY); the parallax keyframes
-  // use the independent `translate` property - no conflict.
-  const pitchDrv = svgTransformDriver(pitch);
-  pitch.style.transformBox = 'fill-box';
-  pitch.style.transformOrigin = '92% 55%';
-
-  const hasSDA = CSS.supports('animation-timeline', 'scroll()') &&
-                 CSS.supports('view-timeline-name', '--x');
-  if (!hasSDA) {
-    setupSoccerFallback({ section: section, svg: svg, kicker: kicker, path: path, pathLen: len });
-  }
-
-  // A scrub-free progress watcher - no timeline attached to it, so it cannot
-  // reintroduce catch-up lag - purely to fire the one-shot contact-moment
-  // accents once at the end of the flight. Same trigger geometry as the CSS
-  // view-timeline's `contain` range.
-  let flourished = false;
-  ScrollTrigger.create({
-    trigger: section.querySelector('.section__anim'), start: 'top top',
-    endTrigger: section, end: 'bottom bottom',
-    onUpdate(self) {
-      if (!flourished && self.progress > 0.97) {
-        flourished = true;
-        impactFlourish(svg, impactPoint, '#6f8f5e');
-        netPulse(pitchDrv);
-      }
-      if (self.progress < 0.9) { flourished = false; }
-    },
-  });
-}
-
-// Ease the ball out of rest over the first `EASE_A` of its flight so a fast
-// flick (or the CSS keyframe sampling) can't snap it onto the path in one
-// frame. Quadratic ease-in, C1-continuous with the linear remainder, then
-// renormalised so flight fraction 1 maps to path distance 1. Mirrors the
-// ballEase in buildSoccerScrubCSS so the happy path and the fallback match.
-const EASE_A = 0.035;
-function ballFlightEase(f) {
-  const norm = 1 - EASE_A / 2;
-  return (f < EASE_A ? (f * f) / (2 * EASE_A) : f - EASE_A / 2) / norm;
-}
-
-// JS rAF 1:1 driver for engines without CSS scroll-driven animation (older
-// Safari / Firefox). Not the primary path (Chromium composites the CSS
-// timeline) - correctness insurance that keeps those engines smooth. Reads
-// scroll position directly each frame (no smoothing), gated to on-screen by an
-// IntersectionObserver so it never runs while the section is away.
-function setupSoccerFallback(ctx) {
-  const section = ctx.section;
-  const svg = ctx.svg;
-  const kicker = ctx.kicker;
-  const path = ctx.path;
-  const pathLen = ctx.pathLen;
-  const ball = svg.querySelector('.ball-group');
-  const trail = svg.querySelector('.chalk-trail');
-  const shadow = svg.querySelector('.ball-shadow');
-  const crowd = svg.querySelector('.layer-crowd');
-  const pitch = svg.querySelector('.layer-pitch');
-
-  // Hand every animated property to JS: neutralise the CSS scroll-driven
-  // animations (on an engine without support the shorthand's default 0s
-  // duration would otherwise snap each element to its end state) and any base
-  // rotate / offset-path so only the JS writes take effect.
-  [ball, trail, shadow, crowd, pitch, kicker.root].forEach((el) => { el.style.animation = 'none'; });
-  ball.style.offsetPath = 'none';
-  ball.style.willChange = 'transform';
-
-  const ballDrv = svgTransformDriver(ball);
-  ballDrv.state.x = path.getPointAtLength(0).x;
-  ballDrv.state.y = path.getPointAtLength(0).y;
-  ballDrv.apply();
-
-  const jointKeys = Object.keys(kicker.jointEls);
-  const jointDrv = {};
-  jointKeys.forEach((k) => {
-    kicker.jointEls[k].style.animation = 'none';
-    kicker.jointEls[k].style.rotate = '0deg';       // CSS-property rotation off; transform owns it
-    kicker.jointEls[k].style.willChange = 'transform';
-    jointDrv[k] = svgRotationDriver(kicker.jointEls[k], KICK_POSES.idle[k]);
-  });
-
-  const FOLLOW_T = KICK_T.follow;
-  const FLIGHT_D = 1 - CONTACT_T;
-
-  let running = false;
-  function tick() {
-    const r = section.getBoundingClientRect();
-    const total = r.height - window.innerHeight;
-    const p = total > 0 ? Math.min(1, Math.max(0, -r.top / total)) : 0;   // 1:1, no smoothing
-
-    // Margin past FOLLOW_T so a fast frame that overshoots still lands the
-    // joints on the follow pose before the figure is fully faded (opacity 0 at
-    // FOLLOW_T + 0.08); beyond that it's invisible so freezing is fine.
-    if (p < FOLLOW_T + 0.09) {
-      const kp = Math.min(p, FOLLOW_T);
-      jointKeys.forEach((k) => {
-        jointDrv[k].state.rotation = kicker.jointSplines[k](kp);
-        jointDrv[k].apply();
-      });
-    }
-    kicker.root.style.opacity = p > FOLLOW_T
-      ? String(Math.max(0, 1 - (p - FOLLOW_T) / 0.08))
-      : '1';
-
-    const f = Math.min(1, Math.max(0, (p - CONTACT_T) / FLIGHT_D));
-    const d = ballFlightEase(f);
-    const pt = path.getPointAtLength(d * pathLen);
-    ballDrv.state.x = pt.x;
-    ballDrv.state.y = pt.y;
-    ballDrv.apply();
-    trail.style.strokeDashoffset = pathLen * (1 - d);
-    const sf = Math.max(0, Math.min(1, (p - CONTACT_T) / (SHADOW_END_T - CONTACT_T)));
-    shadow.style.opacity = String(1 - 0.95 * sf);
-    crowd.style.translate = (-22 * p) + 'px 0';
-    pitch.style.translate = (-8 * p) + 'px 0';
-
-    if (running) { requestAnimationFrame(tick); }
-  }
-
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((e) => {
-      if (e.isIntersecting && !running) { running = true; requestAnimationFrame(tick); }
-      else if (!e.isIntersecting) { running = false; }
-    });
-  });
-  io.observe(section);
-}
-
-function setupBasket() {
-  const section = document.getElementById('sec-basket');
-  const canvas  = section.querySelector('canvas.anim-canvas');
-  const ball    = document.getElementById('bball');
-  const shadow  = document.getElementById('bball-shadow');
-
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width  = canvas.clientWidth  * dpr;
-  canvas.height = canvas.clientHeight * dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  const W = canvas.clientWidth;
-  const H = canvas.clientHeight;
-
-  const rc = rough.canvas(canvas);
-
-  const groundY    = H * 0.72;
-  const hoopRight  = W * 0.96;
-  const rimCenterX = W * 0.80;
-  const rimCenterY = H * 0.30;
-  const rimW       = W * 0.08;
-
-  rc.line(0, groundY, W, groundY, { stroke: '#cf8542', strokeWidth: 1.5, roughness: 0.7 });
-  rc.line(hoopRight, H * 0.10, hoopRight, H * 0.42, { stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 0.9, bowing: 0 });
-  rc.rectangle(hoopRight - W * 0.04, H * 0.14, W * 0.033, H * 0.065, { stroke: '#2b2b2b', strokeWidth: 1.2, roughness: 0.8, fill: 'none' });
-  rc.line(hoopRight - W * 0.02, rimCenterY, rimCenterX + rimW / 2, rimCenterY, { stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 0.8, bowing: 0 });
-  rc.ellipse(rimCenterX, rimCenterY, rimW, rimW * 0.32, { stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 1.0 });
-  const netBase = rimCenterY + H * 0.09;
-  const netOpts = { stroke: '#2b2b2b', strokeWidth: 0.9, roughness: 0.7 };
-  for (let i = 0; i <= 4; i++) {
-    const fromX = (rimCenterX - rimW / 2) + (rimW / 4) * i;
-    const drape = i === 2 ? 0 : i < 2 ? -3 : 3;
-    rc.line(fromX, rimCenterY + 4, fromX + drape, netBase, netOpts);
-  }
-  rc.line(rimCenterX - rimW / 2 + 3, rimCenterY + H * 0.040, rimCenterX + rimW / 2 - 3, rimCenterY + H * 0.040, netOpts);
-  rc.line(rimCenterX - rimW / 2 + 6, rimCenterY + H * 0.065, rimCenterX + rimW / 2 - 6, rimCenterY + H * 0.065, netOpts);
-
-  // Ball CSS: top:calc(72%-34px), left:8% — center at (W*0.08+17, H*0.72-17)
-  // Drop-in starts above section; GSAP y:0 lands at CSS position.
-  gsap.set(ball,   { y: -H * 0.65, opacity: 0, x: 0, scale: 1, rotation: 0 });
-  gsap.set(shadow, { scaleX: 0.3, opacity: 0 });
-
-  let ready    = false;
-  let shooting = false;
-
-  section.style.cursor = 'crosshair';
-
-  function dropIn() {
-    if (ready || shooting) return;
-    gsap.to(ball, {
-      y: 0, opacity: 1,
-      ease: 'bounce.out', duration: 0.9,
-      onComplete: () => {
-        ready = true;
-        gsap.set(shadow, { scaleX: 0.3, opacity: 0.18 });
-      },
-    });
-  }
-
-  function dropBack() {
-    ready = false; shooting = false;
-    gsap.killTweensOf(ball);
-    gsap.set(ball,   { x: 0, y: -H * 0.65, scale: 1, opacity: 0, rotation: 0 });
-    gsap.set(shadow, { scaleX: 0.3, opacity: 0 });
-  }
-
-  ScrollTrigger.create({
-    trigger: section, start: 'top 70%',
-    onEnter: dropIn, onLeaveBack: dropBack,
-  });
-
-  section.addEventListener('click', () => {
-    if (!ready || shooting) return;
-    shooting = true;
-    ready = false;
-    section.querySelector('.section__hint')?.classList.add('is-hidden');
-
-    gsap.set(shadow, { opacity: 0 });
-
-    // Ball center at rest: (W*0.08+17, H*0.72-17). Hoop: (W*0.80, H*0.30).
-    const destX = rimCenterX - (W * 0.08 + 17);
-    const destY = rimCenterY - (H * 0.72 - 17);
-    const peakY = destY - H * 0.22;
-
-    const tl = gsap.timeline({
-      onComplete() {
-        gsap.to(ball, {
-          scale: 0.45, opacity: 0, duration: 0.22,
-          onComplete() {
-            setTimeout(() => {
-              gsap.set(ball,   { x: 0, y: -H * 0.65, scale: 1, opacity: 0, rotation: 0 });
-              gsap.set(shadow, { scaleX: 0.3, opacity: 0 });
-              shooting = false;
-              dropIn();
-            }, 400);
-          },
-        });
-      },
-    });
-    tl.to(ball, { x: destX,      ease: 'power1.inOut', duration: 0.65 }, 0);
-    tl.to(ball, { y: peakY,      ease: 'power2.out',   duration: 0.30 }, 0);
-    tl.to(ball, { y: destY,      ease: 'power2.in',    duration: 0.35 }, 0.30);
-    tl.to(ball, { rotation: 360, ease: 'none',         duration: 0.65 }, 0);
+function netSway(netDrv) {
+  gsap.fromTo(netDrv.state, { scaleY: 1 }, {
+    scaleY: 1.13, duration: 0.11, yoyo: true, repeat: 1,
+    ease: 'power1.inOut', onUpdate: netDrv.apply,
   });
 }
 
