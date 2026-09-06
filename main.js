@@ -1,4 +1,4 @@
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
 
 const ACCENTS  = ['#6f8f5e', '#cf8542', '#7d5f86'];
 const DOT_Y    = [9, 61, 113];
@@ -73,281 +73,361 @@ function setupHeroEntrance() {
     });
   });
 }
+// Each limb is a static translate anchor (the joint) wrapping a GSAP-rotated
+// pivot at local (0,0), with the child limb's anchor nested inside that
+// pivot. Nesting is what makes a child's rotation compose relative to its
+// parent's *current* angle (shin relative to thigh, forearm relative to
+// upper arm) - a real kinematic chain, not swapped full-body poses.
+const KICK_POSES = {
+  idle:    { torso: -92, armB_u: 100, armB_f: 12,  armF_u: 96,  armF_f: 10,  legP_t: 98,  legP_s: -8,  legP_f: -58, legK_t: 96,  legK_s: -6,  legK_f: -58 },
+  windup:  { torso:-108, armB_u: 40,  armB_f:-20,  armF_u:130,  armF_f: 40,  legP_t:105,  legP_s:-14,  legP_f: -58, legK_t:150,  legK_s: 95,  legK_f: -20 },
+  contact: { torso: -72, armB_u:110,  armB_f: 20,  armF_u: 60,  armF_f:-10,  legP_t:100,  legP_s:-18,  legP_f: -58, legK_t: 34,  legK_s: -6,  legK_f: -70 },
+  follow:  { torso:-100, armB_u: 90,  armB_f: 15,  armF_u: 90,  armF_f: 10,  legP_t:100,  legP_s:-10,  legP_f: -58, legK_t:-25,  legK_s: 10,  legK_f: -40 },
+};
+// Scroll-fraction position of each named pose along the kick. Shared with
+// the ball's CONTACT_T gate below (KICK_T.contact) so both stay in lockstep
+// if the kick's timing is ever retuned.
+const KICK_T = { idle: 0, windup: 0.10, contact: 0.14, follow: 0.20 };
+
+// Captain review (follow-up 3): the kicker's joints previously animated via
+// 3 chained GSAP tweens (idle->windup->contact->follow), each with its own
+// ease. Values were already continuous (a tween always starts from the
+// current value), but *velocity* wasn't - power3.in accelerates hard into
+// the end of the contact tween, then power2.out restarts its own, much
+// slower deceleration curve for follow, producing a real motion "kink"
+// right at KICK_T.contact (measured: adjacent-sample jump of ~5.7deg per
+// 0.0005 progress step, versus ~0 elsewhere). A clamped cubic Hermite
+// spline through all 4 poses - the same "evaluate a continuous formula of
+// the current scroll fraction" standard the ball's motionPath already
+// meets - fixes this by construction: each interior knot's tangent is
+// shared by both adjoining segments, so velocity matches on both sides of
+// every pose, not just position. `knots` is `[{t, v}, ...]` sorted by t;
+// endpoints are clamped to zero velocity (idle is a rest state, follow is
+// held while the figure fades out, so both are physically at rest).
+function hermiteSpline(knots) {
+  const n = knots.length;
+  const tangents = knots.map((k, i) => {
+    if (i === 0 || i === n - 1) return 0;
+    const prev = knots[i - 1], next = knots[i + 1];
+    return (next.v - prev.v) / (next.t - prev.t);
+  });
+  return function (t) {
+    if (t <= knots[0].t) return knots[0].v;
+    if (t >= knots[n - 1].t) return knots[n - 1].v;
+    let i = 0;
+    while (i < n - 2 && t > knots[i + 1].t) i++;
+    const t0 = knots[i].t, t1 = knots[i + 1].t;
+    const v0 = knots[i].v, v1 = knots[i + 1].v;
+    const m0 = tangents[i], m1 = tangents[i + 1];
+    const dt = t1 - t0;
+    const s = (t - t0) / dt;
+    const s2 = s * s, s3 = s2 * s;
+    const h00 = 2 * s3 - 3 * s2 + 1;
+    const h10 = s3 - 2 * s2 + s;
+    const h01 = -2 * s3 + 3 * s2;
+    const h11 = s3 - s2;
+    return h00 * v0 + h10 * dt * m0 + h01 * v1 + h11 * dt * m1;
+  };
+}
+
+function buildKicker(svg, restPt) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const rc = rough.svg(svg);
+  const STROKE = { stroke: '#2b2b2b', roughness: 1.3, bowing: 0.7 };
+  const LEN = { torso: 30, neck: 10, thigh: 24, shin: 22, foot: 11, upperArm: 15, forearm: 13 };
+  const hip = { x: restPt.x - 30, y: restPt.y - 24 };
+
+  const root = document.createElementNS(NS, 'g');
+  root.setAttribute('class', 'kicker-figure');
+  root.setAttribute('filter', 'url(#wobble-pitch-soc)');
+  root.setAttribute('transform', 'translate(' + hip.x + ',' + hip.y + ')');
+  svg.insertBefore(root, svg.querySelector('.shot-path'));
+
+  function seg(parent, length, opts) {
+    const pivot = document.createElementNS(NS, 'g');
+    parent.appendChild(pivot);
+    pivot.appendChild(rc.line(0, 0, length, 0, Object.assign({}, STROKE, opts)));
+    return pivot;
+  }
+  function anchorAt(parent, x, y) {
+    const a = document.createElementNS(NS, 'g');
+    a.setAttribute('transform', 'translate(' + x + ',' + y + ')');
+    parent.appendChild(a);
+    return a;
+  }
+  function leg() {
+    const thigh = seg(root, LEN.thigh, { strokeWidth: 2.6 });
+    const shin = seg(anchorAt(thigh, LEN.thigh, 0), LEN.shin, { strokeWidth: 2.2 });
+    const foot = seg(anchorAt(shin, LEN.shin, 0), LEN.foot, { strokeWidth: 1.9 });
+    return { thigh: thigh, shin: shin, foot: foot };
+  }
+  function arm(shoulder) {
+    const upper = seg(shoulder, LEN.upperArm, { strokeWidth: 1.9 });
+    const fore = seg(anchorAt(upper, LEN.upperArm, 0), LEN.forearm, { strokeWidth: 1.7 });
+    return { upper: upper, fore: fore };
+  }
+
+  const torso = seg(root, LEN.torso, { strokeWidth: 2.4 });
+  const shoulder = anchorAt(torso, LEN.torso * 0.86, 0);
+  const armBack = arm(shoulder);
+  const armFront = arm(shoulder);
+  const legPlant = leg();
+  const legKick = leg();
+  // Head anchored beyond the torso tip (torso length + a neck gap, not at
+  // the tip itself) and appended after the shoulder/arms - previously it sat
+  // almost exactly at the shoulder point and, being appended first, painted
+  // *behind* the arms (SVG paints in document order). Captain review: head
+  // must read as clearly above the shoulders/arms, at rest and through the
+  // kick.
+  const headAnchor = anchorAt(torso, LEN.torso + LEN.neck, 0);
+  headAnchor.appendChild(rc.circle(0, 0, 17, Object.assign({}, STROKE, { fill: 'none', strokeWidth: 1.7 })));
+
+  const jointEls = {
+    torso: torso,
+    armB_u: armBack.upper, armB_f: armBack.fore,
+    armF_u: armFront.upper, armF_f: armFront.fore,
+    legP_t: legPlant.thigh, legP_s: legPlant.shin, legP_f: legPlant.foot,
+    legK_t: legKick.thigh, legK_s: legKick.shin, legK_f: legKick.foot,
+  };
+  const joints = {};
+  const jointSplines = {};
+  Object.keys(jointEls).forEach(function (k) {
+    // Each pivot's rough.js line is drawn from local (0,0), so a CSS
+    // transformOrigin of '0 0' pins rotation to the actual joint, without
+    // the per-frame SVG transform-attribute write (see svgRotationDriver).
+    joints[k] = svgRotationDriver(jointEls[k], KICK_POSES.idle[k]);
+    jointSplines[k] = hermiteSpline([
+      { t: KICK_T.idle, v: KICK_POSES.idle[k] },
+      { t: KICK_T.windup, v: KICK_POSES.windup[k] },
+      { t: KICK_T.contact, v: KICK_POSES.contact[k] },
+      { t: KICK_T.follow, v: KICK_POSES.follow[k] },
+    ]);
+  });
+
+  return { root: root, joints: joints, jointSplines: jointSplines };
+}
+
+// Common shape for a pinned scroll-scrub section: `stage` is the CSS
+// position:sticky element (pinning itself is CSS's job, see .section--pinned
+// in style.css - GSAP only scrubs a timeline against the scroll range the
+// section's extra height provides, it never pins). Centralizing the
+// trigger/endTrigger/pin:false wiring here means the next scroll-scrub
+// section (basketball/guitar are next) reuses this instead of re-deriving
+// it, and reuses `svgTransformDriver` below for whatever it animates
+// continuously rather than re-discovering the SVG-attribute cost.
+function createPinnedScrub(section, stage, vars) {
+  return gsap.timeline({
+    scrollTrigger: Object.assign({
+      trigger: stage, start: 'top top',
+      endTrigger: section, end: 'bottom bottom',
+      scrub: 0.35, pin: false,
+    }, vars),
+  });
+}
+
+// GSAP always writes SVG <g>/<path> transforms via the `transform` *attribute*
+// (confirmed directly against this GSAP version - unaffected by transformOrigin),
+// which triggers Blink's SVG-specific layout invalidation on every write. That's
+// cheap for a one-off tween but measurably costly for something transformed on
+// every scrub frame throughout a scroll (profiled while diagnosing scroll jank
+// here - see AGENTS.md). Tweening a plain proxy object instead and applying the
+// result through the element's CSS `transform` *style* keeps continuous
+// scrub-driven position updates on the compositor-only transform path. Reusable
+// for any future scroll-scrub section that continuously repositions an element.
+function svgTransformDriver(el) {
+  const state = { x: 0, y: 0, scaleY: 1 };
+  function apply() {
+    el.style.transform = 'translate(' + state.x + 'px,' + state.y + 'px) scaleY(' + state.scaleY + ')';
+  }
+  apply();
+  return { state: state, apply: apply };
+}
+
+// Same rationale as svgTransformDriver, for the kicker figure's joint
+// rotations: each pivot is rotated every scrub frame during the kick window,
+// which otherwise hits the same SVG-attribute layout-invalidation path.
+function svgRotationDriver(el, initialDeg) {
+  const state = { rotation: initialDeg || 0 };
+  el.style.transformOrigin = '0 0';
+  function apply() {
+    el.style.transform = 'rotate(' + state.rotation + 'deg)';
+  }
+  apply();
+  return { state: state, apply: apply };
+}
+
+function buildSoccerScene(svg) {
+  const rc = rough.svg(svg);
+  const geo = {
+    W: 640, H: 400, groundY: 400 * 0.72,
+    goalLeft: 640 * 0.86, goalRight: 640 * 0.97,
+    goalTop: 400 * 0.38, goalBottom: 400 * 0.72,
+  };
+  geo.gW = geo.goalRight - geo.goalLeft;
+  geo.gH = geo.goalBottom - geo.goalTop;
+
+  function replace(className, node) {
+    const host = svg.querySelector('.' + className);
+    host.innerHTML = '';
+    host.appendChild(node);
+  }
+
+  function drawCrowd() {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('filter', 'url(#wobble-crowd-soc)');
+    g.setAttribute('opacity', '0.16');
+    for (let x = -10; x < geo.W + 30; x += 34) {
+      g.appendChild(rc.arc(x, 46, 22, 16, Math.PI, Math.PI * 2, false, {
+        stroke: '#2b2b2b', strokeWidth: 1, roughness: 1.7,
+      }));
+    }
+    replace('layer-crowd', g);
+  }
+
+  function drawPitch() {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('filter', 'url(#wobble-pitch-soc)');
+    g.appendChild(rc.line(0, geo.groundY, geo.W, geo.groundY, {
+      stroke: '#6f8f5e', strokeWidth: 1.7, roughness: 0.8,
+    }));
+    g.appendChild(rc.line(geo.goalLeft, geo.goalTop, geo.goalLeft, geo.goalBottom, {
+      stroke: '#2b2b2b', strokeWidth: 2.6, roughness: 1.1, bowing: 0,
+    }));
+    g.appendChild(rc.line(geo.goalLeft, geo.goalTop, geo.goalRight, geo.goalTop, {
+      stroke: '#2b2b2b', strokeWidth: 2.6, roughness: 1.1, bowing: 0,
+    }));
+    g.appendChild(rc.line(geo.goalRight, geo.goalTop, geo.goalRight, geo.goalBottom, {
+      stroke: '#2b2b2b', strokeWidth: 2.2, roughness: 1.1, bowing: 0,
+    }));
+    const netOpts = { stroke: '#2b2b2b', strokeWidth: 0.9, roughness: 0.5 };
+    for (let i = 1; i <= 2; i++) {
+      g.appendChild(rc.line(geo.goalLeft, geo.goalTop + geo.gH * i / 3, geo.goalRight, geo.goalTop + geo.gH * i / 3, netOpts));
+      g.appendChild(rc.line(geo.goalLeft + geo.gW * i / 3, geo.goalTop, geo.goalLeft + geo.gW * i / 3, geo.goalBottom, netOpts));
+    }
+    replace('layer-pitch', g);
+  }
+
+  drawCrowd();
+  drawPitch();
+  return { redrawPitch: drawPitch };
+}
+
+function settleRedraw(scene) {
+  // Was 3 rough.js redraw passes (~180ms apart) for a "hand still sketching"
+  // effect; profiling during a captain-reported scroll-jank fix showed each
+  // pass (full rough.js regeneration + wobble-filter recompute) landing
+  // squarely mid-scroll and dropping frames. One pass still gives a visible
+  // redraw moment at a fraction of the cost.
+  scene.redrawPitch();
+}
+
+function impactFlourish(svg, point, color) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const layer = svg.querySelector('.layer-flourish');
+  layer.innerHTML = '';
+  const lines = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2;
+    const line = document.createElementNS(NS, 'line');
+    const x1 = point.x + Math.cos(angle) * 5, y1 = point.y + Math.sin(angle) * 5;
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x1); line.setAttribute('y2', y1);
+    line.setAttribute('stroke', color);
+    line.setAttribute('stroke-width', '1.5');
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('opacity', '0');
+    layer.appendChild(line);
+    lines.push({ el: line, x2: point.x + Math.cos(angle) * 15, y2: point.y + Math.sin(angle) * 15 });
+  }
+  anime.animate(lines.map(l => l.el), {
+    x2: (_, i) => lines[i].x2,
+    y2: (_, i) => lines[i].y2,
+    opacity: [0, 0.8, 0],
+    duration: 420,
+    delay: anime.stagger(12),
+    ease: 'outCubic',
+  });
+}
+
+function netPulse(pitchDrv) {
+  gsap.fromTo(pitchDrv.state, { scaleY: 1 }, {
+    scaleY: 0.965, duration: 0.1, yoyo: true, repeat: 1,
+    ease: 'power1.inOut', onUpdate: pitchDrv.apply,
+  });
+}
+
 function setupSoccer() {
-  const section      = document.getElementById('sec-soccer');
-  const canvas       = section.querySelector('canvas.anim-canvas');
-  const ball         = document.getElementById('bsoc');
-  const goalie       = document.getElementById('soc-goalie');
-  const caption      = document.getElementById('soc-caption');
-  const confettiLayer = document.getElementById('soc-confetti');
-  const statusEl     = document.getElementById('soc-status');
-  const zoneBtns     = Array.from(section.querySelectorAll('.zone-btn'));
+  const section = document.getElementById('sec-soccer');
+  const stage   = section.querySelector('.section__anim');
+  const svg     = section.querySelector('.soccer-scene');
+  const ball    = svg.querySelector('.ball-group');
+  const shadow  = svg.querySelector('.ball-shadow');
+  const trail   = svg.querySelector('.chalk-trail');
+  const path    = svg.querySelector('.shot-path');
+  const crowd   = svg.querySelector('.layer-crowd');
+  const pitch   = svg.querySelector('.layer-pitch');
+  const impactPoint = { x: 592, y: 178 };
 
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width  = canvas.clientWidth  * dpr;
-  canvas.height = canvas.clientHeight * dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  const W = canvas.clientWidth;
-  const H = canvas.clientHeight;
+  const scene = buildSoccerScene(svg);
+  const len = path.getTotalLength();
+  const restPt = path.getPointAtLength(0);
+  trail.style.strokeDasharray = len;
+  trail.style.strokeDashoffset = len;
+  const ballDrv = svgTransformDriver(ball);
+  const crowdDrv = svgTransformDriver(crowd);
+  const pitchDrv = svgTransformDriver(pitch);
+  pitch.style.transformBox = 'fill-box';
+  pitch.style.transformOrigin = '92% 55%';
+  ballDrv.state.x = restPt.x;
+  ballDrv.state.y = restPt.y;
+  ballDrv.apply();
+  const kicker = buildKicker(svg, restPt);
 
-  const rc = rough.canvas(canvas);
+  // Captain review finding: the ball must never start its flight before the
+  // figure's contact pose has visibly resolved. CONTACT_T is the exact
+  // scroll fraction the joints' spline (below) reaches the contact pose at -
+  // every ball/trail/shadow tween below is gated to start there, not at 0,
+  // so scrubbing to any point before it shows only the windup, never the
+  // ball already moving.
+  const CONTACT_T = KICK_T.contact;
+  const FLIGHT_D = 1 - CONTACT_T;
+  const REDRAW_AT = CONTACT_T + FLIGHT_D * 0.5;
 
-  rc.line(0, H * 0.72, W, H * 0.72, {
-    stroke: '#6f8f5e', strokeWidth: 1.5, roughness: 0.7,
-  });
+  let redrawnAt = null;
+  let flourished = false;
+  const jointKeys = Object.keys(kicker.joints);
 
-  const goalRight  = W * 0.97;
-  const goalLeft   = W * 0.86;
-  const goalTop    = H * 0.38;
-  const goalBottom = H * 0.72;
-
-  rc.line(goalLeft, goalTop, goalLeft, goalBottom, { stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 1.1, bowing: 0 });
-  rc.line(goalLeft, goalTop, goalRight, goalTop,   { stroke: '#2b2b2b', strokeWidth: 2.5, roughness: 1.1, bowing: 0 });
-
-  const netOpts = { stroke: '#2b2b2b', strokeWidth: 0.9, roughness: 0.4 };
-  const gW = goalRight - goalLeft;
-  const gH = goalBottom - goalTop;
-  rc.line(goalLeft,             goalTop + gH * 0.33, goalRight, goalTop + gH * 0.33, netOpts);
-  rc.line(goalLeft,             goalTop + gH * 0.66, goalRight, goalTop + gH * 0.66, netOpts);
-  rc.line(goalLeft + gW * 0.33, goalTop,             goalLeft + gW * 0.33, goalBottom, netOpts);
-  rc.line(goalLeft + gW * 0.66, goalTop,             goalLeft + gW * 0.66, goalBottom, netOpts);
-
-  // The 6 shot zones are the net's own cross-hatch panes, not a bolted-on
-  // overlay grid (design.html section 04). Numbering is reading order,
-  // top-left to bottom-right, and doubles as the goalie's target index.
-  const ZONES = {};
-  [1, 2, 3].forEach((zone, i) => {
-    ZONES[zone] = { x: goalLeft + gW * (i + 0.5) / 3, y: goalTop + gH * 0.25 };
-  });
-  [4, 5, 6].forEach((zone, i) => {
-    ZONES[zone] = { x: goalLeft + gW * (i + 0.5) / 3, y: goalTop + gH * 0.75 };
-  });
-
-  // CSS: ball is 32px, left:20%, top:calc(72% - 32px) -> its center at rest.
-  const BALL_START  = { x: W * 0.20 + 16, y: H * 0.72 - 16 };
-  // CSS: .soccer-goalie sits centered on the goal box (calc(91.5% - 21px) etc).
-  const GOALIE_REST = { x: goalLeft + gW * 0.5, y: goalTop + gH * 0.5 };
-
-  // ---- Matter.js world ----
-  // Physics renders the outcome, it never decides it: save vs. goal is
-  // settled by comparing the two zone picks the instant the shot commits
-  // (see commitShot below). Matter.js only owns the save-bounce, since
-  // that's the one motion that needs real collision response - a goal has
-  // nothing to collide with, so its flight is a direct tween further down
-  // (design.html section 06, "Revised after review"; a free-flight physics
-  // goal path was tried, found to fly through the goal with nothing to stop
-  // it, and replaced with the direct tween for exactly that reason).
-  const { Engine, Bodies, Body, World } = Matter;
-  const physicsScale = W / 640; // gravity/speed tuned against a 640px reference stage
-  const engine = Engine.create({ gravity: { x: 0, y: 0.55 * physicsScale } });
-  const ballBody = Bodies.circle(BALL_START.x, BALL_START.y, 16, {
-    restitution: 0.55, friction: 0.05, frictionAir: 0, label: 'ball',
-  });
-  Body.setStatic(ballBody, true);
-  World.add(engine.world, ballBody);
-  const goalieBody = Bodies.rectangle(GOALIE_REST.x, GOALIE_REST.y, 42, 78, {
-    isStatic: true, label: 'goalie',
-  });
-  World.add(engine.world, goalieBody);
-  // Save-bounce ball needs somewhere to land, or gravity keeps it falling
-  // past the drawn ground line and off the clipped canvas (design.html
-  // section 06: the ball "drops to the ground", i.e. rests on it).
-  const groundY = H * 0.72;
-  const groundBody = Bodies.rectangle(W / 2, groundY + 20, W * 3, 40, {
-    isStatic: true, label: 'ground', restitution: 0.35, friction: 0.6,
-  });
-  World.add(engine.world, groundBody);
-
-  const setBallX = gsap.quickSetter(ball, 'x', 'px');
-  const setBallY = gsap.quickSetter(ball, 'y', 'px');
-
-  gsap.set(ball, { x: -(W * 0.20 + 36), y: 0, rotation: 0, scale: 1, opacity: 1 });
-
-  let ready    = false;
-  let shooting = false;
-  let rafId       = null;
-  let ballTween   = null;
-  let resolveTimer = null;
-  let resetTimer   = null;
-
-  function setGridEnabled(enabled) {
-    zoneBtns.forEach(btn => { btn.disabled = !enabled; });
-  }
-  setGridEnabled(false);
-
-  function diveGoalie(zone) {
-    const t = ZONES[zone];
-    const topRow = zone <= 3;
-    anime.animate(goalie, {
-      translateX: t.x - GOALIE_REST.x,
-      translateY: t.y - GOALIE_REST.y,
-      rotate: topRow ? -10 : 10,
-      scaleY: topRow ? 1.06 : 0.9,
-      duration: 380,
-      ease: 'outQuad',
-    });
-  }
-
-  function resetGoalie() {
-    anime.remove(goalie);
-    anime.animate(goalie, {
-      translateX: 0, translateY: 0, rotate: 0, scaleY: 1,
-      duration: 280, ease: 'outQuad',
-    });
-  }
-
-  function burstConfetti(atZone) {
-    confettiLayer.innerHTML = '';
-    const colors = [...ACCENTS, '#2b2b2b'];
-    const origin = ZONES[atZone];
-    const pieces = [];
-    for (let i = 0; i < 28; i++) {
-      const el = document.createElement('div');
-      el.className = 'confetti-piece';
-      el.style.left = origin.x + 'px';
-      el.style.top  = origin.y + 'px';
-      el.style.background = colors[i % colors.length];
-      confettiLayer.appendChild(el);
-      pieces.push(el);
-    }
-    anime.animate(pieces, {
-      translateX: () => anime.utils.random(-90, 90),
-      translateY: () => anime.utils.random(50, 150),
-      rotate: () => anime.utils.random(-180, 180),
-      opacity: [1, 0],
-      duration: () => anime.utils.random(650, 950),
-      delay: anime.stagger(6),
-      ease: 'outCubic',
-    });
-  }
-
-  function physicsLoop() {
-    Engine.update(engine, 1000 / 60);
-    setBallX(ballBody.position.x - BALL_START.x);
-    setBallY(ballBody.position.y - BALL_START.y);
-    rafId = requestAnimationFrame(physicsLoop);
-  }
-
-  function stopAllMotion() {
-    clearTimeout(resolveTimer);
-    clearTimeout(resetTimer);
-    cancelAnimationFrame(rafId);
-    if (ballTween && ballTween.pause) ballTween.pause();
-    anime.remove(goalie);
-    goalie.style.transform = '';
-  }
-
-  function rollIn() {
-    if (ready || shooting) return;
-    gsap.to(ball, {
-      x: 0, rotation: -180,
-      ease: 'power2.out', duration: 0.6,
-      onComplete: () => { ready = true; setGridEnabled(true); },
-    });
-  }
-
-  function rollBack() {
-    ready = false; shooting = false;
-    setGridEnabled(false);
-    stopAllMotion();
-    Body.setStatic(ballBody, true);
-    Body.setPosition(ballBody, BALL_START);
-    Body.setVelocity(ballBody, { x: 0, y: 0 });
-    caption.className = 'soccer-caption';
-    caption.textContent = '';
-    statusEl.textContent = '';
-    gsap.killTweensOf(ball);
-    gsap.set(ball, { x: -(W * 0.20 + 36), y: 0, scale: 1, opacity: 1, rotation: 0 });
-  }
-
-  ScrollTrigger.create({
-    trigger: section, start: 'top 70%',
-    onEnter: rollIn, onLeaveBack: rollBack,
-  });
-
-  function scheduleReset() {
-    resetTimer = setTimeout(() => {
-      cancelAnimationFrame(rafId);
-      if (ballTween && ballTween.pause) ballTween.pause();
-      Body.setStatic(ballBody, false);
-      Body.setPosition(ballBody, BALL_START);
-      Body.setVelocity(ballBody, { x: 0, y: 0 });
-      Body.setStatic(ballBody, true);
-      gsap.set(ball, { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1 });
-      resetGoalie();
-      caption.className = 'soccer-caption';
-      caption.textContent = '';
-      statusEl.textContent = '';
-      shooting = false;
-      ready = true;
-      setGridEnabled(true);
-    }, 550);
-  }
-
-  function commitShot(playerZone) {
-    if (!ready || shooting) return;
-    shooting = true;
-    ready = false;
-    setGridEnabled(false);
-    section.querySelector('.section__hint')?.classList.add('is-hidden');
-
-    const goalieZone = 1 + Math.floor(Math.random() * 6);
-    const isSave = goalieZone === playerZone;
-
-    diveGoalie(goalieZone);
-    Body.setPosition(goalieBody, ZONES[goalieZone]);
-
-    const aim = ZONES[playerZone];
-
-    if (isSave) {
-      // Real Matter.js flight + collision: the ball's actual bounce off the
-      // goalie is the point here, so physics owns the whole motion.
-      Body.setStatic(ballBody, false);
-      Body.setPosition(ballBody, BALL_START);
-      const dx = aim.x - BALL_START.x, dy = aim.y - BALL_START.y;
-      const dist = Math.hypot(dx, dy);
-      const speed = 15 * physicsScale;
-      Body.setVelocity(ballBody, { x: dx / dist * speed, y: dy / dist * speed - 3.5 * physicsScale });
-      cancelAnimationFrame(rafId);
-      physicsLoop();
-    } else {
-      // A goal has nothing to collide with, so drive the ball straight to
-      // the chosen zone: it lands exactly where aimed, every time, by
-      // construction rather than by tuning gravity/speed to arrive there.
-      if (ballTween && ballTween.pause) ballTween.pause();
-      ballTween = anime.animate(ball, {
-        translateX: aim.x - BALL_START.x,
-        translateY: aim.y - BALL_START.y,
-        duration: 460,
-        ease: 'outQuad',
-      });
-    }
-
-    resolveTimer = setTimeout(() => {
-      if (isSave) {
-        caption.className = 'soccer-caption is-save';
-        caption.textContent = 'SAVED';
-        statusEl.textContent = 'Saved - the keeper dove the right way.';
-        resetTimer = setTimeout(scheduleReset, 700);
-      } else {
-        caption.className = 'soccer-caption is-goal';
-        caption.textContent = 'GOAL!';
-        statusEl.textContent = 'Goal!';
-        burstConfetti(playerZone);
-        resetTimer = setTimeout(() => {
-          ball.style.opacity = '0';
-          scheduleReset();
-        }, 250);
+  const tl = createPinnedScrub(section, stage, {
+    onUpdate(self) {
+      // Direct formula evaluation, not tween-to-tween handoffs: each joint's
+      // spline is one continuous function of the scroll fraction across the
+      // whole kick, so there's no phase-boundary velocity kink (see
+      // hermiteSpline's comment - this is what follow-up 3 found and fixed).
+      // Guarded to the active kick window (progress <= KICK_T.follow) so
+      // this doesn't keep writing a clamped, unchanging value every tick for
+      // the rest of the scroll once the figure has settled/faded - the
+      // spline-chain tweens it replaced naturally stopped calling onUpdate
+      // once complete, and this preserves that same per-frame-write budget.
+      if (self.progress <= KICK_T.follow) {
+        jointKeys.forEach((k) => {
+          kicker.joints[k].state.rotation = kicker.jointSplines[k](self.progress);
+          kicker.joints[k].apply();
+        });
       }
-    }, 500);
-  }
-
-  zoneBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      commitShot(parseInt(btn.getAttribute('data-zone'), 10));
-    });
+      if (redrawnAt === null && self.progress > REDRAW_AT) { redrawnAt = self.progress; settleRedraw(scene); }
+      if (self.progress < REDRAW_AT - 0.1) { redrawnAt = null; }
+      if (!flourished && self.progress > 0.97) { flourished = true; impactFlourish(svg, impactPoint, '#6f8f5e'); netPulse(pitchDrv); }
+      if (self.progress < 0.9) { flourished = false; }
+    },
   });
+
+  tl.to(kicker.root, { opacity: 0, duration: 0.08, ease: 'power1.in' }, KICK_T.follow);
+
+  tl.to(ballDrv.state, { motionPath: { path: path, start: 0, end: 1, autoRotate: false }, ease: 'none', duration: FLIGHT_D, onUpdate: ballDrv.apply }, CONTACT_T);
+  tl.to(trail, { strokeDashoffset: 0, ease: 'none', duration: FLIGHT_D }, CONTACT_T);
+  tl.to(shadow, { opacity: 0.05, ease: 'none', duration: FLIGHT_D * 0.75 }, CONTACT_T);
+  tl.to(crowdDrv.state, { x: -22, ease: 'none', duration: 1, onUpdate: crowdDrv.apply }, 0);
+  tl.to(pitchDrv.state, { x: -8, ease: 'none', duration: 1, onUpdate: pitchDrv.apply }, 0);
 }
 
 function setupBasket() {
