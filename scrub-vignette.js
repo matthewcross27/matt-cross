@@ -1,9 +1,11 @@
 /* ============================================================================
  * scrub-vignette.js - shared machinery for the decorative scroll-scrub sections
  * ----------------------------------------------------------------------------
- * Everything here is section-agnostic. setupSoccer() and setupBasket() in
- * main.js both compose these helpers; the per-section code stays thin (draw a
- * scene, define a pose set + a projectile path, list a few parallax tracks).
+ * Everything here is section-agnostic. setupSoccer(), setupBasket() and
+ * setupHero() in main.js all compose these helpers; the per-section code stays
+ * thin (draw a scene, define a pose set + a projectile path, list a few parallax
+ * tracks). The stick-figure rig (buildStickFigure) is shared by all three - two
+ * scroll-scrub figures and the hero's scroll-free looping wave.
  *
  * The go-forward pattern for a decorative scroll section is:
  *   1. a native CSS scroll-driven timeline declared on .section--pinned
@@ -21,7 +23,9 @@
  *   easeOutOfRest(easeA)              ease-a-value-out-of-rest factory
  *   worldPose(w) / FIGURE_JOINTS      pose authoring helpers
  *   buildStickFigure(svg, opts)       the humanoid joint chain + forward kinematics
- *   buildScrubStylesheet(cfg)         pose/path data -> @keyframes stylesheet text
+ *   buildScrubStylesheet(cfg)         pose/path data -> @keyframes bound to a view-timeline
+ *   buildLoopStylesheet(cfg)          same pose splines -> @keyframes played linear infinite
+ *                                     (the scroll-free idle path, e.g. the hero wave)
  *   pinnedScrubFallback(cfg)          the rAF 1:1 fallback loop
  *   figureJointsChannel / offsetPathChannel / dashChannel / translateChannel /
  *     fadeChannel / styleChannel      fallback channel factories
@@ -406,6 +410,66 @@ function buildScrubStylesheet(cfg) {
   return kf.concat(rules).join('\n');
 }
 
+/* ---- buildLoopStylesheet(cfg) : the same rig, driven by a wall clock ------
+ * The scrub path binds generated @keyframes to a view-timeline so the compositor
+ * advances them 1:1 with scroll. A decorative idle (the hero figure's wave) is
+ * the same shape minus the scroll: bake the identical hermite pose splines into
+ * @keyframes, then play them `linear infinite` over a fixed period. No
+ * view-timeline, no rAF, no main-thread work per frame - the compositor loops
+ * the transform track on its own.
+ *
+ * For a seamless loop the first and last authored pose must be identical (the
+ * spline then has matched value AND zero velocity at 0% / 100%, so the wrap has
+ * no jump and no kink - same guarantee hermiteSpline gives every interior knot).
+ *
+ * cfg = {
+ *   ns:       'hero'                  keyframe-name namespace
+ *   scene:    '.hero__figure'         selector every rule is scoped under
+ *   period:   '4600ms'               one loop's duration
+ *   figure?:  { jointSplines, idlePose?, steps=64 }
+ *   tracks?:  [ { selector, property, spline:(prog)=>value, steps=48 } ]
+ *             prog runs 0..1 over one period; spline(0) must equal spline(1).
+ * }
+ */
+function buildLoopStylesheet(cfg) {
+  var ns = cfg.ns;
+  var scene = cfg.scene;
+  var period = cfg.period || '4600ms';
+  var play = ' ' + period + ' linear infinite';
+  var kf = [];
+  var rules = [];
+
+  (cfg.tracks || []).forEach(function (tr, idx) {
+    var name = ns + '-loop-t' + idx;
+    var steps = tr.steps || 48;
+    var frames = '';
+    for (var i = 0; i <= steps; i++) {
+      var prog = i / steps;
+      frames += (prog * 100).toFixed(3) + '%{' + tr.property + ':' + tr.spline(prog) + '}';
+    }
+    kf.push('@keyframes ' + name + '{' + frames + '}');
+    rules.push(scene + ' ' + tr.selector + '{animation:' + name + play + '}');
+  });
+
+  if (cfg.figure) {
+    var fig = cfg.figure;
+    var jSteps = fig.steps || 64;
+    FIGURE_JOINTS.forEach(function (k) {
+      var jframes = '';
+      for (var i = 0; i <= jSteps; i++) {
+        var prog = i / jSteps;
+        jframes += (prog * 100).toFixed(4) + '%{rotate:' + fig.jointSplines[k](prog).toFixed(3) + 'deg}';
+      }
+      kf.push('@keyframes ' + ns + '-loop-j-' + k + '{' + jframes + '}');
+      rules.push(scene + ' .j-' + k + '{' +
+        (fig.idlePose ? 'rotate:' + (+fig.idlePose[k]).toFixed(3) + 'deg;' : '') +
+        'animation:' + ns + '-loop-j-' + k + play + '}');
+    });
+  }
+
+  return kf.concat(rules).join('\n');
+}
+
 /* ---- pinnedScrubFallback(cfg) : the JS rAF 1:1 driver --------------------
  * For engines without CSS scroll-driven animation (older Safari / Firefox).
  * Reads scroll position directly each frame (no smoothing), gated on-screen by
@@ -540,6 +604,7 @@ window.ScrubVignette = {
   FIGURE_LENGTHS: FIGURE_LENGTHS,
   buildStickFigure: buildStickFigure,
   buildScrubStylesheet: buildScrubStylesheet,
+  buildLoopStylesheet: buildLoopStylesheet,
   pinnedScrubFallback: pinnedScrubFallback,
   figureJointsChannel: figureJointsChannel,
   offsetPathChannel: offsetPathChannel,

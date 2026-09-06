@@ -28,13 +28,16 @@ function init() {
       el.style.transform = 'none';
     });
     document.querySelector('.hero').classList.add('is-loaded');
-    // Soccer stays title + caption only in reduced motion (its scene is never
-    // built). Basketball draws a single static "made shot" frame - it has a
-    // natural resting composition (ball in the net) that reads without motion.
+    // Hero figure renders in a still resting pose (no loop, no rAF). Soccer
+    // stays title + caption only in reduced motion (its scene is never built).
+    // Basketball draws a single static "made shot" frame - it has a natural
+    // resting composition (ball in the net) that reads without motion.
+    setupHero();
     setupBasket();
     return;
   }
   setupHeroEntrance();
+  setupHero();
   setupSoccer();
   setupBasket();
   setupGuitar();
@@ -78,6 +81,77 @@ function setupHeroEntrance() {
       delay: 0.06 + i * 0.045,
     });
   });
+}
+
+/* ============================================================================
+ * Hero - a looping idle wave on the shared stick-figure rig
+ * ----------------------------------------------------------------------------
+ * Same rig as the soccer + basketball figures (SV.buildStickFigure), so the
+ * landing-page character reads as the same person. It is NOT scroll-driven: the
+ * hermite pose splines are baked into @keyframes by SV.buildLoopStylesheet and
+ * played `linear infinite` over HERO_PERIOD - the compositor loops the joint
+ * rotate tracks, no rAF, no per-frame JS.
+ *
+ * The wave is a real multi-joint motion: the waving arm's upper arm holds raised
+ * while the forearm (arm2_f) swings through several passes with follow-through,
+ * then the whole arm lowers to the side. A ~3deg torso sway reads as breathing.
+ * First and last pose are identical so the loop wraps with no jump / no kink.
+ *
+ * Poses are WORLD angles (0 = +x, -90 = straight up), converted with worldPose.
+ * arm2 = the waving arm (drawn after arm1, so it paints in front); arm1 just
+ * hangs at the side, held there the whole loop. Both arms rest a little forward
+ * of vertical - a dead-vertical hang buries them in the torso line.
+ * ==========================================================================*/
+const HERO_POSES = {
+  rest:  { torso: -90, arm1_u: 82, arm1_f: 94, arm2_u:  70, arm2_f:  96,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
+  lift:  { torso: -89, arm1_u: 83, arm1_f: 93, arm2_u: -64, arm2_f: -78,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
+  waveA: { torso: -88, arm1_u: 84, arm1_f: 92, arm2_u: -66, arm2_f: -52,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
+  waveB: { torso: -87, arm1_u: 84, arm1_f: 92, arm2_u: -60, arm2_f: -100, leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
+  waveC: { torso: -88, arm1_u: 84, arm1_f: 92, arm2_u: -66, arm2_f: -54,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
+  waveD: { torso: -88, arm1_u: 84, arm1_f: 92, arm2_u: -62, arm2_f: -96,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
+  drop:  { torso: -89, arm1_u: 83, arm1_f: 93, arm2_u:  30, arm2_f:  40,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
+  rest2: { torso: -90, arm1_u: 82, arm1_f: 94, arm2_u:  70, arm2_f:  96,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
+};
+// rest at 0 and rest2 at 1 are identical, with a rest hold at each end of the
+// cycle (0 -> 0.13 and 0.85 -> 1) so the seam sits inside a still beat.
+const HERO_T = { rest: 0, lift: 0.13, waveA: 0.29, waveB: 0.43, waveC: 0.57, waveD: 0.71, drop: 0.85, rest2: 1 };
+const HERO_PERIOD = '4600ms';
+
+function setupHero() {
+  const svg = document.querySelector('.hero__figure');
+  if (!svg) return;
+
+  const poses = {};
+  Object.keys(HERO_POSES).forEach(k => { poses[k] = SV.worldPose(HERO_POSES[k]); });
+
+  const figure = SV.buildStickFigure(svg, {
+    anchor: { x: 60, y: 92 },
+    lengths: { neck: 12, torso: 34, thigh: 27, shin: 25, foot: 12, upperArm: 17, forearm: 16, head: 18 },
+    legWidths: [2.9, 2.4, 2.0],
+    armWidths: [2.1, 1.9],
+    poses,
+    times: HERO_T,
+    stroke: { roughness: 1.0, bowing: 0.6 },
+    rootClass: 'hero-figure',
+  });
+
+  // Reduced motion: a still resting pose, no loop stylesheet, no rAF.
+  if (REDUCED) {
+    SV.FIGURE_JOINTS.forEach(k => {
+      figure.jointEls[k].style.rotate = (+figure.idlePose[k]).toFixed(3) + 'deg';
+    });
+    return;
+  }
+
+  const style = document.createElement('style');
+  style.id = 'hero-idle-keyframes';
+  style.textContent = SV.buildLoopStylesheet({
+    ns: 'hero',
+    scene: '.hero__figure',
+    period: HERO_PERIOD,
+    figure: { jointSplines: figure.jointSplines, idlePose: figure.idlePose, steps: 72 },
+  });
+  document.head.appendChild(style);
 }
 
 /* ============================================================================
@@ -271,12 +345,17 @@ function setupSoccer() {
 // WORLD angles: 0 = toward the hoop (right), -90 = straight up, +90 = straight
 // down. leg1 = front leg, leg2 = trail leg. Legs keep a visible knee bend
 // through the jump so the figure reads as a body, not a pole.
+// arm1 = shooting arm (its hand is the release point, see figure.fk below);
+// arm2 = guide / off hand. The guide arm holds its raised release attitude from
+// `rise` through `land` (a beat past BASKET_RELEASE_T = apex) and only lowers to
+// the side on the way to `watch` - a jump-shot follow-through, not a hand that
+// drops the instant the ball leaves.
 const BASKET_POSES = {
   stand:  { torso: -85, arm1_u: 60,  arm1_f: 22,  arm2_u: 72,  arm2_f: 28,  leg1_t: 83,  leg1_s: 92,  leg1_f: 6,   leg2_t: 97,  leg2_s: 89,  leg2_f: 6 },
   gather: { torso: -66, arm1_u: 76,  arm1_f: 44,  arm2_u: 90,  arm2_f: 48,  leg1_t: 70,  leg1_s: 116, leg1_f: 20,  leg2_t: 62,  leg2_s: 120, leg2_f: 18 },
   rise:   { torso: -86, arm1_u: 4,   arm1_f: -58, arm2_u: -8,  arm2_f: -52, leg1_t: 84,  leg1_s: 104, leg1_f: 52,  leg2_t: 92,  leg2_s: 108, leg2_f: 54 },
   apex:   { torso: -90, arm1_u: -77, arm1_f: -90, arm2_u: -22, arm2_f: 20,  leg1_t: 72,  leg1_s: 122, leg1_f: 60,  leg2_t: 104, leg2_s: 96,  leg2_f: 64 },
-  land:   { torso: -82, arm1_u: -58, arm1_f: -46, arm2_u: 44,  arm2_f: 64,  leg1_t: 66,  leg1_s: 118, leg1_f: 8,   leg2_t: 94,  leg2_s: 114, leg2_f: 12 },
+  land:   { torso: -82, arm1_u: -58, arm1_f: -46, arm2_u: -22, arm2_f: 22,  leg1_t: 66,  leg1_s: 118, leg1_f: 8,   leg2_t: 94,  leg2_s: 114, leg2_f: 12 },
   watch:  { torso: -89, arm1_u: -46, arm1_f: -36, arm2_u: 70,  arm2_f: 24,  leg1_t: 84,  leg1_s: 91,  leg1_f: 6,   leg2_t: 96,  leg2_s: 89,  leg2_f: 6 },
 };
 // Timing: the shot motion (gather -> rise -> apex) spans ~15% of the scroll so

@@ -43,29 +43,11 @@
       <span class="hero__char" style="opacity:.35" aria-hidden="true">…</span>
     </h1>
     <p class="hero__sub">[ one honest line about who you are ]</p>
-    <svg class="hero__figure" viewBox="0 0 300 360" aria-label="Waving stick figure" role="img">
-      <defs>
-        <filter id="r-hero">
-          <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="3" result="n"/>
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/>
-        </filter>
-      </defs>
-      <g filter="url(#r-hero)" fill="none" stroke="#2b2b2b" stroke-width="3.4" stroke-linecap="round">
-        <circle cx="150" cy="72" r="34"/>
-        <circle cx="142" cy="66" r="2.6" fill="#2b2b2b" stroke="none"/>
-        <circle cx="158" cy="66" r="2.6" fill="#2b2b2b" stroke="none"/>
-        <path d="M141 82 Q150 89 159 82" stroke-width="2.4"/>
-        <line x1="150" y1="106" x2="150" y2="236"/>
-        <line x1="150" y1="140" x2="108" y2="198"/>
-        <g>
-          <line x1="150" y1="140" x2="198" y2="96"/>
-          <animateTransform attributeName="transform" type="rotate"
-            values="-9 150 140;15 150 140;-9 150 140" dur="2.6s" repeatCount="indefinite"/>
-        </g>
-        <line x1="150" y1="236" x2="120" y2="340"/>
-        <line x1="150" y1="236" x2="180" y2="340"/>
-      </g>
-    </svg>
+    <!-- Populated by setupHero() in main.js with the shared scrub-vignette.js
+         stick-figure rig (same character as the soccer + basketball figures).
+         The wave is a multi-joint hermite pose loop; no live SVG filter - the
+         hand-drawn look is a static rough.js pass, like the other two figures. -->
+    <svg class="hero__figure" viewBox="0 0 120 165" aria-label="Waving stick figure" role="img"></svg>
     <div class="hero__scroll-cue" aria-hidden="true">
       scroll<span class="hero__scroll-arrow">↓</span>
     </div>

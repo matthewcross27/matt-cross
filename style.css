@@ -74,7 +74,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .hero.is-loaded .hero__eyebrow,
 .hero.is-loaded .hero__sub { clip-path: inset(0 0 0% 0); }
 
-.hero__figure { width: 188px; height: auto; margin-top: 28px; }
+.hero__figure { width: 188px; height: auto; margin-top: 28px; overflow: visible; }
 .hero__scroll-cue {
   position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
   font-family: var(--font-mono); font-size: 11px; letter-spacing: .22em;

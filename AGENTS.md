@@ -32,13 +32,14 @@ Matter.js was removed (soccer's click-to-shoot minigame it existed for was repla
 decorative scroll-scrub accent); don't reintroduce a physics engine without a real
 collision-response need. MotionPathPlugin was removed when soccer's ball moved to CSS
 `offset-path`; nothing else used it. Libraries in play, each with a fixed job:
-- **Native CSS scroll-driven animation** (`view-timeline` + `animation-timeline`): both
-  decorative scroll-scrub sections (soccer, basketball) - ball `offset-path`/
-  `offset-distance`, chalk trail, parallax, the whole-figure jump translate, and the stick
-  figure's joint rotations. `@keyframes` are generated in JS by
-  `ScrubVignette.buildScrubStylesheet()` in `scrub-vignette.js` from `hermiteSpline` +
-  per-section pose data + `releaseT`. This is the go-forward pattern for decorative-accent
-  scroll sections (guitar when/if it gets there).
+- **Native CSS / compositor-driven keyframe animation**: both decorative scroll-scrub
+  sections (soccer, basketball) and the hero's looping idle wave. `@keyframes` are
+  generated in JS in `scrub-vignette.js` from `hermiteSpline` + pose data and bound
+  either to a `view-timeline` (the scrub sections, via `ScrubVignette.buildScrubStylesheet()`
+  - ball `offset-path`/`offset-distance`, trail, parallax, jump translate, joint rotations,
+  gated on `releaseT`) or to a wall clock with `animation: … linear infinite` (the hero,
+  via `ScrubVignette.buildLoopStylesheet()`). Both paths keep motion off the main thread.
+  This is the go-forward pattern for decorative-accent sections (guitar when/if it gets there).
 - **GSAP + ScrollTrigger**: hero entrance, section scroll-reveals, nav dot, and each
   scrub section's one-shot contact accents (`netPulse`/`netSway`, fired by a scrub-free
   ScrollTrigger progress watcher). NOT the scrub itself.
@@ -47,21 +48,35 @@ collision-response need. MotionPathPlugin was removed when soccer's ball moved t
   land at an exact deterministic target, e.g. the contact-moment ink flourish
   (`impactFlourish()` in `main.js`, used by both scrub sections).
 
-## Scroll-scrub sections: `scrub-vignette.js` + thin per-section `setup*`
+## `scrub-vignette.js` + thin per-section `setup*` (three figures, one rig)
 
 `#sec-soccer` (a figure kicks into the goal) and `#sec-basket` (a figure rises for a jump
 shot) are pinned (`.section--pinned`, CSS `position: sticky`), non-interactive scroll-scrub
-accents - not the click/hover minigames PR #1 shipped. Guitar is still the hover-pluck
-minigame and reuses only the low-level helpers if it ever becomes scroll-linked.
+accents - not the click/hover minigames PR #1 shipped. The **hero** figure
+(`.hero__figure`, `setupHero` in `main.js`) is the same stick-figure rig again, driven by a
+scroll-free looping wave. Guitar is still the hover-pluck minigame and reuses only the
+low-level helpers if it ever becomes scroll-linked.
 
 The section-agnostic machinery lives once in **`scrub-vignette.js`** (plain IIFE, one
 global `window.ScrubVignette`, loaded before `main.js`): `hermiteSpline`, `easeOutOfRest`,
 `worldPose`/`FIGURE_JOINTS`, `buildStickFigure` (the 11-pivot humanoid + a `fk(t)` forward-
-kinematics readout), `buildScrubStylesheet` (pose/path data -> `@keyframes` text),
-`pinnedScrubFallback` + channel factories (the JS rAF 1:1 driver), `svgTransformDriver`/
-`svgRotationDriver`, `supportsScrollDrivenAnimation`. `setupSoccer` / `setupBasket` in
-`main.js` are thin: draw a scene, define poses + a projectile path, call the helpers. A new
-scroll section plugs in the same way - do not re-inline or fork this code.
+kinematics readout, shared by all three figures), `buildScrubStylesheet` (pose/path data ->
+`@keyframes` bound to a `view-timeline`), `buildLoopStylesheet` (the same pose splines ->
+`@keyframes` played `linear infinite`, no scroll - the hero idle path),
+`pinnedScrubFallback` + channel factories (the JS rAF 1:1 driver for the scrub sections),
+`svgTransformDriver`/`svgRotationDriver`, `supportsScrollDrivenAnimation`. `setupSoccer` /
+`setupBasket` / `setupHero` in `main.js` are thin: draw/emit a scene, define poses (+ a
+projectile path for the scrub sections), call the helpers. A new section plugs in the same
+way - do not re-inline or fork this code.
+
+The hero has no scroll timeline and no rAF: `buildLoopStylesheet` bakes the wave's hermite
+pose splines into per-joint `@keyframes` and the compositor loops them. Its first and last
+pose are identical (spline value *and* velocity match at 0%/100%) so the loop wraps without
+a jump or kink. Under `prefers-reduced-motion` `setupHero` skips the stylesheet and writes
+one still resting pose. The hero figure dropped its old `#r-hero` `feTurbulence` filter and
+one-hinge SMIL `<animateTransform>`; like soccer and basketball its hand-drawn look is now a
+single static rough.js pass (it is always on screen - exactly the per-frame GPU cost the
+soccer work removed).
 
 Sharp edges:
 - Each pinned section declares its own `view-timeline-name` (`--soccer-tl` / `--basket-tl`)
@@ -146,10 +161,11 @@ and apply via the CSS `transform` *style* instead; used by the one-shot `netPuls
 channels sidestep this entirely (CSS `rotate`/`translate`/`transform` *style*, never the
 attribute). Also: don't animate `stroke-dashoffset` on a *filtered* path, and
 never run a rough.js regen (`settleRedraw` was removed) while a scroll may be active - it
-fired mid-arc as a synchronous main-thread task. The three `feTurbulence`/
-`feDisplacementMap` wobble filters were removed with this change (real per-frame GPU
-re-raster on the captain's hardware); the hand-drawn look is now a static rough.js pass
-drawn once.
+fired mid-arc as a synchronous main-thread task. Every animated `feTurbulence`/
+`feDisplacementMap` wobble filter has been removed (the scrub scenes' three, then the
+hero's `#r-hero`) - real per-frame GPU re-raster on the captain's hardware; the hand-drawn
+look on all three figures is now a static rough.js pass drawn once. (The still
+`project-card__border` filters remain - they never animate.)
 
 ### This sandbox cannot validate GPU/compositing cost
 
