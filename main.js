@@ -1,4 +1,4 @@
-gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
+gsap.registerPlugin(ScrollTrigger);
 
 const ACCENTS  = ['#6f8f5e', '#cf8542', '#7d5f86'];
 const DOT_Y    = [9, 61, 113];
@@ -98,7 +98,7 @@ const KICK_T = { idle: 0, windup: 0.10, contact: 0.14, follow: 0.20 };
 // right at KICK_T.contact (measured: adjacent-sample jump of ~5.7deg per
 // 0.0005 progress step, versus ~0 elsewhere). A clamped cubic Hermite
 // spline through all 4 poses - the same "evaluate a continuous formula of
-// the current scroll fraction" standard the ball's motionPath already
+// the current scroll fraction" standard the ball's offset-path flight already
 // meets - fixes this by construction: each interior knot's tangent is
 // shared by both adjoining segments, so velocity matches on both sides of
 // every pose, not just position. `knots` is `[{t, v}, ...]` sorted by t;
@@ -139,7 +139,6 @@ function buildKicker(svg, restPt) {
 
   const root = document.createElementNS(NS, 'g');
   root.setAttribute('class', 'kicker-figure');
-  root.setAttribute('filter', 'url(#wobble-pitch-soc)');
   root.setAttribute('transform', 'translate(' + hip.x + ',' + hip.y + ')');
   svg.insertBefore(root, svg.querySelector('.shot-path'));
 
@@ -189,13 +188,14 @@ function buildKicker(svg, restPt) {
     legP_t: legPlant.thigh, legP_s: legPlant.shin, legP_f: legPlant.foot,
     legK_t: legKick.thigh, legK_s: legKick.shin, legK_f: legKick.foot,
   };
-  const joints = {};
   const jointSplines = {};
   Object.keys(jointEls).forEach(function (k) {
     // Each pivot's rough.js line is drawn from local (0,0), so a CSS
-    // transformOrigin of '0 0' pins rotation to the actual joint, without
-    // the per-frame SVG transform-attribute write (see svgRotationDriver).
-    joints[k] = svgRotationDriver(jointEls[k], KICK_POSES.idle[k]);
+    // transform-origin of '0 0' pins rotation (CSS `rotate` from the generated
+    // keyframes, or `transform` from svgRotationDriver in the JS fallback) to
+    // the actual joint rather than the SVG viewBox origin.
+    jointEls[k].style.transformOrigin = '0 0';
+    jointEls[k].classList.add('j-' + k);
     jointSplines[k] = hermiteSpline([
       { t: KICK_T.idle, v: KICK_POSES.idle[k] },
       { t: KICK_T.windup, v: KICK_POSES.windup[k] },
@@ -204,36 +204,97 @@ function buildKicker(svg, restPt) {
     ]);
   });
 
-  return { root: root, joints: joints, jointSplines: jointSplines };
+  return { root: root, jointEls: jointEls, jointSplines: jointSplines };
 }
 
-// Common shape for a pinned scroll-scrub section: `stage` is the CSS
-// position:sticky element (pinning itself is CSS's job, see .section--pinned
-// in style.css - GSAP only scrubs a timeline against the scroll range the
-// section's extra height provides, it never pins). Centralizing the
-// trigger/endTrigger/pin:false wiring here means the next scroll-scrub
-// section (basketball/guitar are next) reuses this instead of re-deriving
-// it, and reuses `svgTransformDriver` below for whatever it animates
-// continuously rather than re-discovering the SVG-attribute cost.
-function createPinnedScrub(section, stage, vars) {
-  return gsap.timeline({
-    scrollTrigger: Object.assign({
-      trigger: stage, start: 'top top',
-      endTrigger: section, end: 'bottom bottom',
-      scrub: 0.35, pin: false,
-    }, vars),
+// Build the stylesheet that drives the whole soccer scroll-scrub off the
+// native CSS scroll-driven timeline declared on .section--pinned (see
+// style.css). Every value is a plain @keyframes bound to `--soc-tl`, so the
+// compositor advances motion 1:1 with scroll offset - no ScrollTrigger scrub
+// (a *numeric* scrub is a time-based catch-up smoother, not a 1:1 link: on a
+// fast trackpad flick it renders up to ~15% of the timeline behind scroll and
+// keeps animating 150-350ms after input stops, and its rendered per-frame
+// velocity over/undershoots ~+-50% even on smooth input - the laggy-scroll /
+// stop-motion-ball root cause, see AGENTS.md).
+//
+// The keyframes are generated (not hand-written) from the same KICK_POSES /
+// hermiteSpline / KICK_T the kicker has always used, so:
+//  - the ball / trail / shadow flight stays gated to KICK_T.contact (the
+//    captain-review scroll fraction the kicker's contact pose resolves at) -
+//    scrub to any earlier point and only the windup shows, never the ball;
+//  - retiming KICK_POSES / KICK_T and regenerating reproduces the round-3
+//    joint value+velocity continuity guarantee automatically (hermiteSpline
+//    gives it by construction; sampling into ~48 keyframes/joint preserves it).
+function buildSoccerScrubCSS(opts) {
+  const jointSplines = opts.jointSplines;
+  const pathLen = opts.pathLen;
+  const offsetPath = opts.offsetPath;
+  const FOLLOW_T = KICK_T.follow;
+  const contactPct = +(CONTACT_T * 100).toFixed(3);
+  const followPct = +(FOLLOW_T * 100).toFixed(3);
+  const fadeEndPct = +((FOLLOW_T + 0.08) * 100).toFixed(3);
+
+  // Ball flight is eased out of rest (ballFlightEase) so a fast flick or the
+  // keyframe sampling can't snap it onto the path in one frame (the ~25px
+  // CONTACT_T pop). Sampled into keyframes here; the JS fallback evaluates the
+  // same function directly.
+  const BALL_STEPS = 40;
+  let ballKf = '0%,' + contactPct + '%{offset-distance:0%}';
+  let trailKf = '0%,' + contactPct + '%{stroke-dashoffset:' + pathLen.toFixed(2) + '}';
+  for (let i = 1; i <= BALL_STEPS; i++) {
+    const f = i / BALL_STEPS;
+    const pct = ((CONTACT_T + f * (1 - CONTACT_T)) * 100).toFixed(3);
+    const d = ballFlightEase(f);
+    ballKf += pct + '%{offset-distance:' + (d * 100).toFixed(3) + '%}';
+    trailKf += pct + '%{stroke-dashoffset:' + (pathLen * (1 - d)).toFixed(2) + '}';
+  }
+
+  const JOINT_STEPS = 48;
+  let jointCss = '';
+  Object.keys(jointSplines).forEach(function (k) {
+    let frames = '';
+    for (let i = 0; i <= JOINT_STEPS; i++) {
+      const prog = (i / JOINT_STEPS) * FOLLOW_T;      // scroll fraction 0..FOLLOW_T
+      frames += (prog * 100).toFixed(4) + '%{rotate:' + jointSplines[k](prog).toFixed(3) + 'deg}';
+    }
+    // Held flat from FOLLOW_T to the end of the scroll range.
+    frames += '100%{rotate:' + jointSplines[k](FOLLOW_T).toFixed(3) + 'deg}';
+    jointCss +=
+      '@keyframes soc-j-' + k + '{' + frames + '}' +
+      '.soccer-scene .j-' + k + '{rotate:' + KICK_POSES.idle[k].toFixed(3) + 'deg;' +
+      'animation:soc-j-' + k + ' linear both;animation-timeline:--soc-tl;' +
+      'animation-range:contain 0% contain 100%}';
   });
+
+  const R = 'animation-timeline:--soc-tl;animation-range:contain 0% contain 100%';
+  return [
+    '@keyframes soc-ball{' + ballKf + '100%{offset-distance:100%}}',
+    '@keyframes soc-trail{' + trailKf + '100%{stroke-dashoffset:0}}',
+    '@keyframes soc-shadow{0%,' + contactPct + '%{opacity:1}78%,100%{opacity:.05}}',
+    '@keyframes soc-crowd{from{translate:0 0}to{translate:-22px 0}}',
+    '@keyframes soc-pitch{from{translate:0 0}to{translate:-8px 0}}',
+    '@keyframes soc-kicker-fade{0%,' + followPct + '%{opacity:1}' + fadeEndPct + '%,100%{opacity:0}}',
+    '.soccer-scene .ball-group{offset-path:path("' + offsetPath + '");offset-rotate:0deg;' +
+      'offset-distance:0%;animation:soc-ball linear both;' + R + '}',
+    '.soccer-scene .chalk-trail{animation:soc-trail linear both;' + R + '}',
+    '.soccer-scene .ball-shadow{animation:soc-shadow linear both;' + R + '}',
+    '.soccer-scene .layer-crowd{animation:soc-crowd linear both;' + R + '}',
+    '.soccer-scene .layer-pitch{animation:soc-pitch linear both;' + R + '}',
+    '.soccer-scene .kicker-figure{animation:soc-kicker-fade linear both;' + R + '}',
+    jointCss,
+  ].join('\n');
 }
 
 // GSAP always writes SVG <g>/<path> transforms via the `transform` *attribute*
 // (confirmed directly against this GSAP version - unaffected by transformOrigin),
 // which triggers Blink's SVG-specific layout invalidation on every write. That's
 // cheap for a one-off tween but measurably costly for something transformed on
-// every scrub frame throughout a scroll (profiled while diagnosing scroll jank
-// here - see AGENTS.md). Tweening a plain proxy object instead and applying the
-// result through the element's CSS `transform` *style* keeps continuous
-// scrub-driven position updates on the compositor-only transform path. Reusable
-// for any future scroll-scrub section that continuously repositions an element.
+// every frame throughout a scroll (profiled while diagnosing scroll jank here -
+// see AGENTS.md). Tweening a plain proxy object instead and applying the result
+// through the element's CSS `transform` *style* keeps continuous per-frame
+// position updates on the compositor-only transform path. The soccer happy path
+// no longer needs this (its scrub is native CSS scroll-driven animation), but
+// it stays for the JS fallback (setupSoccerFallback) and for basketball/guitar.
 function svgTransformDriver(el) {
   const state = { x: 0, y: 0, scaleY: 1 };
   function apply() {
@@ -243,9 +304,10 @@ function svgTransformDriver(el) {
   return { state: state, apply: apply };
 }
 
-// Same rationale as svgTransformDriver, for the kicker figure's joint
-// rotations: each pivot is rotated every scrub frame during the kick window,
-// which otherwise hits the same SVG-attribute layout-invalidation path.
+// Same rationale as svgTransformDriver, for a single joint's rotation: each
+// pivot is rotated every frame during the kick window, which otherwise hits the
+// same SVG-attribute layout-invalidation path. Used by the JS fallback for the
+// kicker figure (the happy path rotates the joints via generated CSS keyframes).
 function svgRotationDriver(el, initialDeg) {
   const state = { rotation: initialDeg || 0 };
   el.style.transformOrigin = '0 0';
@@ -256,6 +318,12 @@ function svgRotationDriver(el, initialDeg) {
   return { state: state, apply: apply };
 }
 
+// Static hand-drawn scene, drawn exactly once. The sketch character comes from
+// rough.js roughness/bowing on the elements themselves - no live SVG wobble
+// filter (feTurbulence/feDisplacementMap on a scrub-driven or parallax group is
+// a real per-frame GPU re-raster cost, see AGENTS.md) and no mid-scroll
+// rough.js redraw (settleRedraw, removed: it regenerated a filtered group as a
+// synchronous main-thread task at scroll fraction ~0.616, mid-arc).
 function buildSoccerScene(svg) {
   const rc = rough.svg(svg);
   const geo = {
@@ -274,7 +342,6 @@ function buildSoccerScene(svg) {
 
   function drawCrowd() {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('filter', 'url(#wobble-crowd-soc)');
     g.setAttribute('opacity', '0.16');
     for (let x = -10; x < geo.W + 30; x += 34) {
       g.appendChild(rc.arc(x, 46, 22, 16, Math.PI, Math.PI * 2, false, {
@@ -286,7 +353,6 @@ function buildSoccerScene(svg) {
 
   function drawPitch() {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('filter', 'url(#wobble-pitch-soc)');
     g.appendChild(rc.line(0, geo.groundY, geo.W, geo.groundY, {
       stroke: '#6f8f5e', strokeWidth: 1.7, roughness: 0.8,
     }));
@@ -309,16 +375,6 @@ function buildSoccerScene(svg) {
 
   drawCrowd();
   drawPitch();
-  return { redrawPitch: drawPitch };
-}
-
-function settleRedraw(scene) {
-  // Was 3 rough.js redraw passes (~180ms apart) for a "hand still sketching"
-  // effect; profiling during a captain-reported scroll-jank fix showed each
-  // pass (full rough.js regeneration + wobble-filter recompute) landing
-  // squarely mid-scroll and dropping frames. One pass still gives a visible
-  // redraw moment at a fraction of the cost.
-  scene.redrawPitch();
 }
 
 function impactFlourish(svg, point, color) {
@@ -356,78 +412,168 @@ function netPulse(pitchDrv) {
   });
 }
 
+// The scroll fraction the kicker's spline reaches its contact pose at (and, by
+// construction, the point the generated ball/trail/shadow keyframes hold flat
+// until). Single source, shared with the JS fallback.
+const CONTACT_T = KICK_T.contact;
+
 function setupSoccer() {
   const section = document.getElementById('sec-soccer');
-  const stage   = section.querySelector('.section__anim');
   const svg     = section.querySelector('.soccer-scene');
-  const ball    = svg.querySelector('.ball-group');
-  const shadow  = svg.querySelector('.ball-shadow');
-  const trail   = svg.querySelector('.chalk-trail');
-  const path    = svg.querySelector('.shot-path');
-  const crowd   = svg.querySelector('.layer-crowd');
   const pitch   = svg.querySelector('.layer-pitch');
+  const path    = svg.querySelector('.shot-path');
+  const trail   = svg.querySelector('.chalk-trail');
   const impactPoint = { x: 592, y: 178 };
 
-  const scene = buildSoccerScene(svg);
+  buildSoccerScene(svg);
   const len = path.getTotalLength();
   const restPt = path.getPointAtLength(0);
   trail.style.strokeDasharray = len;
   trail.style.strokeDashoffset = len;
-  const ballDrv = svgTransformDriver(ball);
-  const crowdDrv = svgTransformDriver(crowd);
+
+  const kicker = buildKicker(svg, restPt);
+
+  // Drive the whole scrub off a native CSS scroll-driven timeline: the
+  // compositor advances every element 1:1 with scroll offset, no ScrollTrigger
+  // scrub. Keyframes are generated from KICK_POSES / hermiteSpline / CONTACT_T
+  // (see buildSoccerScrubCSS).
+  const style = document.createElement('style');
+  style.id = 'soccer-scrub-keyframes';
+  style.textContent = buildSoccerScrubCSS({
+    jointSplines: kicker.jointSplines,
+    pathLen: len,
+    offsetPath: path.getAttribute('d'),
+  });
+  document.head.appendChild(style);
+
+  // netPulse uses the CSS `transform` property (scaleY); the parallax keyframes
+  // use the independent `translate` property - no conflict.
   const pitchDrv = svgTransformDriver(pitch);
   pitch.style.transformBox = 'fill-box';
   pitch.style.transformOrigin = '92% 55%';
-  ballDrv.state.x = restPt.x;
-  ballDrv.state.y = restPt.y;
-  ballDrv.apply();
-  const kicker = buildKicker(svg, restPt);
 
-  // Captain review finding: the ball must never start its flight before the
-  // figure's contact pose has visibly resolved. CONTACT_T is the exact
-  // scroll fraction the joints' spline (below) reaches the contact pose at -
-  // every ball/trail/shadow tween below is gated to start there, not at 0,
-  // so scrubbing to any point before it shows only the windup, never the
-  // ball already moving.
-  const CONTACT_T = KICK_T.contact;
-  const FLIGHT_D = 1 - CONTACT_T;
-  const REDRAW_AT = CONTACT_T + FLIGHT_D * 0.5;
+  const hasSDA = CSS.supports('animation-timeline', 'scroll()') &&
+                 CSS.supports('view-timeline-name', '--x');
+  if (!hasSDA) {
+    setupSoccerFallback({ section: section, svg: svg, kicker: kicker, path: path, pathLen: len });
+  }
 
-  let redrawnAt = null;
+  // A scrub-free progress watcher - no timeline attached to it, so it cannot
+  // reintroduce catch-up lag - purely to fire the one-shot contact-moment
+  // accents once at the end of the flight. Same trigger geometry as the CSS
+  // view-timeline's `contain` range.
   let flourished = false;
-  const jointKeys = Object.keys(kicker.joints);
-
-  const tl = createPinnedScrub(section, stage, {
+  ScrollTrigger.create({
+    trigger: section.querySelector('.section__anim'), start: 'top top',
+    endTrigger: section, end: 'bottom bottom',
     onUpdate(self) {
-      // Direct formula evaluation, not tween-to-tween handoffs: each joint's
-      // spline is one continuous function of the scroll fraction across the
-      // whole kick, so there's no phase-boundary velocity kink (see
-      // hermiteSpline's comment - this is what follow-up 3 found and fixed).
-      // Guarded to the active kick window (progress <= KICK_T.follow) so
-      // this doesn't keep writing a clamped, unchanging value every tick for
-      // the rest of the scroll once the figure has settled/faded - the
-      // spline-chain tweens it replaced naturally stopped calling onUpdate
-      // once complete, and this preserves that same per-frame-write budget.
-      if (self.progress <= KICK_T.follow) {
-        jointKeys.forEach((k) => {
-          kicker.joints[k].state.rotation = kicker.jointSplines[k](self.progress);
-          kicker.joints[k].apply();
-        });
+      if (!flourished && self.progress > 0.97) {
+        flourished = true;
+        impactFlourish(svg, impactPoint, '#6f8f5e');
+        netPulse(pitchDrv);
       }
-      if (redrawnAt === null && self.progress > REDRAW_AT) { redrawnAt = self.progress; settleRedraw(scene); }
-      if (self.progress < REDRAW_AT - 0.1) { redrawnAt = null; }
-      if (!flourished && self.progress > 0.97) { flourished = true; impactFlourish(svg, impactPoint, '#6f8f5e'); netPulse(pitchDrv); }
       if (self.progress < 0.9) { flourished = false; }
     },
   });
+}
 
-  tl.to(kicker.root, { opacity: 0, duration: 0.08, ease: 'power1.in' }, KICK_T.follow);
+// Ease the ball out of rest over the first `EASE_A` of its flight so a fast
+// flick (or the CSS keyframe sampling) can't snap it onto the path in one
+// frame. Quadratic ease-in, C1-continuous with the linear remainder, then
+// renormalised so flight fraction 1 maps to path distance 1. Mirrors the
+// ballEase in buildSoccerScrubCSS so the happy path and the fallback match.
+const EASE_A = 0.035;
+function ballFlightEase(f) {
+  const norm = 1 - EASE_A / 2;
+  return (f < EASE_A ? (f * f) / (2 * EASE_A) : f - EASE_A / 2) / norm;
+}
 
-  tl.to(ballDrv.state, { motionPath: { path: path, start: 0, end: 1, autoRotate: false }, ease: 'none', duration: FLIGHT_D, onUpdate: ballDrv.apply }, CONTACT_T);
-  tl.to(trail, { strokeDashoffset: 0, ease: 'none', duration: FLIGHT_D }, CONTACT_T);
-  tl.to(shadow, { opacity: 0.05, ease: 'none', duration: FLIGHT_D * 0.75 }, CONTACT_T);
-  tl.to(crowdDrv.state, { x: -22, ease: 'none', duration: 1, onUpdate: crowdDrv.apply }, 0);
-  tl.to(pitchDrv.state, { x: -8, ease: 'none', duration: 1, onUpdate: pitchDrv.apply }, 0);
+// JS rAF 1:1 driver for engines without CSS scroll-driven animation (older
+// Safari / Firefox). Not the primary path (Chromium composites the CSS
+// timeline) - correctness insurance that keeps those engines smooth. Reads
+// scroll position directly each frame (no smoothing), gated to on-screen by an
+// IntersectionObserver so it never runs while the section is away.
+function setupSoccerFallback(ctx) {
+  const section = ctx.section;
+  const svg = ctx.svg;
+  const kicker = ctx.kicker;
+  const path = ctx.path;
+  const pathLen = ctx.pathLen;
+  const ball = svg.querySelector('.ball-group');
+  const trail = svg.querySelector('.chalk-trail');
+  const shadow = svg.querySelector('.ball-shadow');
+  const crowd = svg.querySelector('.layer-crowd');
+  const pitch = svg.querySelector('.layer-pitch');
+
+  document.documentElement.classList.add('no-sda');
+
+  // Hand every animated property to JS: neutralise the CSS scroll-driven
+  // animations (on an engine without support the shorthand's default 0s
+  // duration would otherwise snap each element to its end state) and any base
+  // rotate / offset-path so only the JS writes take effect.
+  [ball, trail, shadow, crowd, pitch, kicker.root].forEach((el) => { el.style.animation = 'none'; });
+  ball.style.offsetPath = 'none';
+  ball.style.willChange = 'transform';
+
+  const ballDrv = svgTransformDriver(ball);
+  ballDrv.state.x = path.getPointAtLength(0).x;
+  ballDrv.state.y = path.getPointAtLength(0).y;
+  ballDrv.apply();
+
+  const jointKeys = Object.keys(kicker.jointEls);
+  const jointDrv = {};
+  jointKeys.forEach((k) => {
+    kicker.jointEls[k].style.animation = 'none';
+    kicker.jointEls[k].style.rotate = '0deg';       // CSS-property rotation off; transform owns it
+    kicker.jointEls[k].style.willChange = 'transform';
+    jointDrv[k] = svgRotationDriver(kicker.jointEls[k], KICK_POSES.idle[k]);
+  });
+
+  const FOLLOW_T = KICK_T.follow;
+  const FLIGHT_D = 1 - CONTACT_T;
+
+  let running = false;
+  function tick() {
+    const r = section.getBoundingClientRect();
+    const total = r.height - window.innerHeight;
+    const p = total > 0 ? Math.min(1, Math.max(0, -r.top / total)) : 0;   // 1:1, no smoothing
+
+    // Margin past FOLLOW_T so a fast frame that overshoots still lands the
+    // joints on the follow pose before the figure is fully faded (opacity 0 at
+    // FOLLOW_T + 0.08); beyond that it's invisible so freezing is fine.
+    if (p < FOLLOW_T + 0.09) {
+      const kp = Math.min(p, FOLLOW_T);
+      jointKeys.forEach((k) => {
+        jointDrv[k].state.rotation = kicker.jointSplines[k](kp);
+        jointDrv[k].apply();
+      });
+    }
+    kicker.root.style.opacity = p > FOLLOW_T
+      ? String(Math.max(0, 1 - (p - FOLLOW_T) / 0.08))
+      : '1';
+
+    const f = Math.min(1, Math.max(0, (p - CONTACT_T) / FLIGHT_D));
+    const d = ballFlightEase(f);
+    const pt = path.getPointAtLength(d * pathLen);
+    ballDrv.state.x = pt.x;
+    ballDrv.state.y = pt.y;
+    ballDrv.apply();
+    trail.style.strokeDashoffset = pathLen * (1 - d);
+    const sf = Math.max(0, Math.min(1, (p - CONTACT_T) / (0.78 - CONTACT_T)));
+    shadow.style.opacity = String(1 - 0.95 * sf);
+    crowd.style.translate = (-22 * p) + 'px 0';
+    pitch.style.translate = (-8 * p) + 'px 0';
+
+    if (running) { requestAnimationFrame(tick); }
+  }
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting && !running) { running = true; requestAnimationFrame(tick); }
+      else if (!e.isIntersecting) { running = false; }
+    });
+  });
+  io.observe(section);
 }
 
 function setupBasket() {
