@@ -53,30 +53,41 @@ collision-response need. MotionPathPlugin was removed when soccer's ball moved t
 `#sec-soccer` (a figure kicks into the goal) and `#sec-basket` (a figure rises for a jump
 shot) are pinned (`.section--pinned`, CSS `position: sticky`), non-interactive scroll-scrub
 accents - not the click/hover minigames PR #1 shipped. The **hero** figure
-(`.hero__figure`, `setupHero` in `main.js`) is the same stick-figure rig again, driven by a
-scroll-free looping wave. Guitar is still the hover-pluck minigame and reuses only the
-low-level helpers if it ever becomes scroll-linked.
+(`.hero__figure`, `setupHero` in `main.js`) is the same stick-figure rig again, front-facing
+and driven by a scroll-free looping wave (see below). Guitar is still the hover-pluck
+minigame and reuses only the low-level helpers if it ever becomes scroll-linked.
 
 The section-agnostic machinery lives once in **`scrub-vignette.js`** (plain IIFE, one
 global `window.ScrubVignette`, loaded before `main.js`): `hermiteSpline`, `easeOutOfRest`,
-`worldPose`/`FIGURE_JOINTS`, `buildStickFigure` (the 11-pivot humanoid + a `fk(t)` forward-
-kinematics readout, shared by all three figures), `buildScrubStylesheet` (pose/path data ->
-`@keyframes` bound to a `view-timeline`), `buildLoopStylesheet` (the same pose splines ->
-`@keyframes` played `linear infinite`, no scroll - the hero idle path),
-`pinnedScrubFallback` + channel factories (the JS rAF 1:1 driver for the scrub sections),
-`svgTransformDriver`/`svgRotationDriver`, `supportsScrollDrivenAnimation`. `setupSoccer` /
-`setupBasket` / `setupHero` in `main.js` are thin: draw/emit a scene, define poses (+ a
-projectile path for the scrub sections), call the helpers. A new section plugs in the same
-way - do not re-inline or fork this code.
+`easeLaunch` (leave-at-speed-then-coast, the projectile counterpart), `worldPose`/
+`FIGURE_JOINTS`, `buildStickFigure` (the humanoid pivot chain + a `fk(t)` forward-kinematics
+readout, shared by all three figures), `buildScrubStylesheet` (pose/path data -> `@keyframes`
+bound to a `view-timeline`), `buildLoopStylesheet` (the same pose splines -> `@keyframes`
+played `linear infinite`, no scroll - the hero idle path), `pinnedScrubFallback` + channel
+factories (the JS rAF 1:1 driver for the scrub sections), `svgTransformDriver`/
+`svgRotationDriver`, `supportsScrollDrivenAnimation`. `setupSoccer` / `setupBasket` /
+`setupHero` in `main.js` are thin: draw/emit a scene, define poses (+ a projectile path for
+the scrub sections), call the helpers. A new section plugs in the same way - do not re-inline
+or fork this code.
 
-The hero has no scroll timeline and no rAF: `buildLoopStylesheet` bakes the wave's hermite
-pose splines into per-joint `@keyframes` and the compositor loops them. Its first and last
-pose are identical (spline value *and* velocity match at 0%/100%) so the loop wraps without
-a jump or kink. Under `prefers-reduced-motion` `setupHero` skips the stylesheet and writes
-one still resting pose. The hero figure dropped its old `#r-hero` `feTurbulence` filter and
-one-hinge SMIL `<animateTransform>`; like soccer and basketball its hand-drawn look is now a
-single static rough.js pass (it is always on screen - exactly the per-frame GPU cost the
-soccer work removed).
+`buildStickFigure` is 11 pivots by default; opt-in flags generalise it without touching the
+two scrub figures (soccer/basket pass none, so their generated `<style>` + scene SVG are
+byte-identical - diff both old vs new when you touch the rig): `hands:true` adds a wrist
+segment per arm (`arm1_h`/`arm2_h`), `face:true` draws two eyes + a smile counter-rotated to
+read head-on, `armsOverHead:true` paints the arms above the head. It returns its own ordered
+`joints` list - pass `figure.joints` to `buildScrubStylesheet`/`buildLoopStylesheet`/
+`figureJointsChannel` so they drive the right set.
+
+The hero (`setupHero`, `HERO_POSES`/`HERO_T`) is that rig **front-facing**: `hands` + `face`
++ `armsOverHead`, torso pinned near vertical, a symmetric stance, and a raised arm doing a
+side-to-side "hello" wave - `arm2_f` swings left<->right while `arm2_h` (the wrist) trails a
+beat behind it. No scroll timeline, no rAF: `buildLoopStylesheet` bakes the hermite pose
+splines into per-joint `@keyframes` and the compositor loops them over `HERO_PERIOD`. First
+and last pose (`rest`/`rest2`) are identical (spline value *and* velocity match at 0%/100%)
+so the loop wraps clean. Under `prefers-reduced-motion` `setupHero` skips the stylesheet and
+freezes one static mid-wave "hand up" pose (`HERO_T.waveA`). The hero dropped its old
+`#r-hero` `feTurbulence` filter and one-hinge SMIL `<animateTransform>`; like the other two
+its hand-drawn look is a single static rough.js pass.
 
 Sharp edges:
 - Each pinned section declares its own `view-timeline-name` (`--soccer-tl` / `--basket-tl`)
@@ -89,10 +100,13 @@ Sharp edges:
   `visible` (`.section--pinned` overrides the base `.section`'s `overflow: hidden`); a
   `view-timeline` NAME lookup is *not* broken by ancestor overflow, so `.section__anim`'s
   `overflow: hidden` is fine. Don't reintroduce `overflow: hidden` on `.section--pinned`.
-- **The projectile's flight must never start before the figure's release pose resolves**
-  (`SOCCER_RELEASE_T` = `SOCCER_T.contact`; `BASKET_RELEASE_T` = `BASKET_T.apex`) - a
-  captain-review-caught regression class. The generated ball/trail keyframes hold flat
-  until `releaseT`; keep it gated to the same constant if you retime.
+- **The projectile's flight must never start before the figure's release pose resolves** -
+  a captain-review-caught regression class. `SOCCER_RELEASE_T` = `SOCCER_T.contact`.
+  `BASKET_RELEASE_T` is `0.26`, deliberately a touch *before* the `apex` pose (0.30) so the
+  shooting arm is still driving up-and-forward and the body still rising as the ball leaves -
+  it reads as a shot, not a hand opening at the top. It is the single constant every gated
+  tween keys off (ball, trail, `.ball-carry`, the flourish `ScrollTrigger`); retiming it
+  carries them all. The generated ball/trail keyframes hold flat until `releaseT`.
 - `pinnedScrubFallback` (gated on `supportsScrollDrivenAnimation()`) must keep driving the
   identical motion - it neutralises the inert CSS animations with `animation: none` and
   writes only compositor properties. `svg.dataset.driver` is `'native'` or `'fallback'`.
@@ -108,10 +122,21 @@ the ball must be *the same point* as the hand, not a separately-authored carry p
 drifts): a `.ball-carry` wrapper `<g>` gets a `translate` track of `fk(t).hand1 -
 releasePoint` (read straight off `buildStickFigure`'s forward kinematics), while the inner
 `.ball-group` sits at `offset-distance: 0%` (= the first point of the arc = the release
-point). At `releaseT` the carry translate is exactly `[0,0]`, so the handoff onto the arc
-has no positional jump - on both the native and fallback paths. Soccer is the degenerate
-case (no carry: the ball just waits at offset-distance 0%). Reuse this shape for any future
+point). At `releaseT` the carry translate is exactly `[0,0]`, so the handoff has no
+positional jump - on both the native and fallback paths. Soccer is the degenerate case
+(no carry: the ball just waits at offset-distance 0%). Reuse this shape for any future
 "figure holds X then releases it" scroll vignette.
+
+The handoff is also **velocity-continuous** (captain: the ball must look *shot*, not
+dropped). Two pieces, both in `setupBasket`: (1) the arc's first control point is set along
+the shooting hand's actual velocity at release (`fk(releaseT+dt).hand1 - fk(releaseT)`), so
+the ball leaves on the hand's heading - no direction kink, and it carries clearly forward
+toward the hoop before the parabola bends it down. (2) the ball's `offset-distance` ease is
+`easeLaunch(handSpeed / meanPathSpeed)` instead of `easeOutOfRest` - it departs at the
+hand's speed and coasts, rather than easing up from a standstill (which read as "let go").
+The shooting arm keeps extending through and past `releaseT` (`apex` pose is a goose-neck
+follow-through toward the rim, not straight up); the guide hand holds its raised attitude
+past `releaseT` and only drops on the way to `watch`.
 
 ## Scroll-scrub performance
 

@@ -21,8 +21,10 @@
  * Contents:
  *   hermiteSpline(knots)              value+velocity-continuous cubic spline
  *   easeOutOfRest(easeA)              ease-a-value-out-of-rest factory
+ *   easeLaunch(a)                     leave-at-speed-then-coast ease (projectile)
  *   worldPose(w) / FIGURE_JOINTS      pose authoring helpers
  *   buildStickFigure(svg, opts)       the humanoid joint chain + forward kinematics
+ *                                     (opt-in hands / face / armsOverHead)
  *   buildScrubStylesheet(cfg)         pose/path data -> @keyframes bound to a view-timeline
  *   buildLoopStylesheet(cfg)          same pose splines -> @keyframes played linear infinite
  *                                     (the scroll-free idle path, e.g. the hero wave)
@@ -86,6 +88,17 @@ function easeOutOfRest(easeA) {
   };
 }
 
+/* The projectile counterpart to easeOutOfRest: an ease that LEAVES at a chosen
+ * speed and then coasts (decelerates), instead of easing up from a standstill.
+ * `a` is the initial slope (1 = linear). Pass (hand speed at release) / (mean
+ * path speed) so a thrown ball departs the hand at the hand's own speed - the
+ * hand -> arc handoff then has no velocity step. Clamped to [1, 1.95] to stay
+ * monotonic on [0, 1]. s(0) = 0, s(1) = 1, s'(0) = a. */
+function easeLaunch(a) {
+  a = Math.max(1, Math.min(1.95, a || 1));
+  return function (f) { return a * f - (a - 1) * f * f; };
+}
+
 /* ---- the humanoid joint chain -------------------------------------------
  * 11 pivots, neutral names. Each limb is a static translate anchor (the joint)
  * wrapping a rotated pivot at local (0,0), with the child limb's anchor nested
@@ -99,7 +112,7 @@ var FIGURE_JOINTS = [
 
 var FIGURE_LENGTHS = {
   torso: 30, neck: 10, thigh: 24, shin: 22, foot: 11,
-  upperArm: 15, forearm: 13, head: 17,
+  upperArm: 15, forearm: 13, hand: 6, head: 17,
 };
 
 /* Author poses in WORLD angles (0 = +x / toward the target, -90 = straight up,
@@ -108,13 +121,19 @@ var FIGURE_LENGTHS = {
  * torso and both thighs are absolute, everything else is relative to its
  * parent. buildStickFigure() takes the converted (parent-relative) form. */
 function worldPose(w) {
-  return {
+  var out = {
     torso: w.torso,
     arm1_u: w.arm1_u - w.torso, arm1_f: w.arm1_f - w.arm1_u,
     arm2_u: w.arm2_u - w.torso, arm2_f: w.arm2_f - w.arm2_u,
     leg1_t: w.leg1_t, leg1_s: w.leg1_s - w.leg1_t, leg1_f: w.leg1_f - w.leg1_s,
     leg2_t: w.leg2_t, leg2_s: w.leg2_s - w.leg2_t, leg2_f: w.leg2_f - w.leg2_s,
   };
+  // Optional wrist/hand segment (buildStickFigure `hands: true`) - parent-relative
+  // to its forearm. Only emitted when the pose authors it, so figures without a
+  // hand joint (soccer, basketball) convert exactly as before.
+  if (w.arm1_h !== undefined) out.arm1_h = w.arm1_h - w.arm1_f;
+  if (w.arm2_h !== undefined) out.arm2_h = w.arm2_h - w.arm2_f;
+  return out;
 }
 
 /* buildStickFigure(svg, {
@@ -128,10 +147,21 @@ function worldPose(w) {
  *   rootTranslate?: (t) => [dx, dy]       px offset of the whole figure vs
  *                                         scroll fraction (a jump arc); needed
  *                                         for fk() to be scene-accurate
+ *   hands?:        bool                   add a 3rd `hand` segment to each arm
+ *                                         (joints arm1_h / arm2_h) - a wrist for
+ *                                         follow-through/overlap on a wave etc.
+ *   face?:         bool                   draw two eyes + a smile on the head,
+ *                                         counter-rotated so a front-facing
+ *                                         (vertical-torso) figure reads head-on
+ *   armsOverHead?: bool                   paint the arms above the head (a
+ *                                         waving hand that crosses the face)
  * }) -> {
- *   root, jointEls, jointSplines, idlePose,
+ *   root, jointEls, jointSplines, joints, idlePose,
  *   fk(t) -> forward-kinematics joint points in scene viewBox coords
  * }
+ * `joints` is the actual ordered joint list for this figure (FIGURE_JOINTS, plus
+ * arm1_h/arm2_h when hands:true) - pass it to buildScrubStylesheet/
+ * buildLoopStylesheet/figureJointsChannel so they drive the right set.
  */
 function buildStickFigure(svg, opts) {
   var rc = rough.svg(svg);
@@ -140,11 +170,19 @@ function buildStickFigure(svg, opts) {
     { stroke: '#2b2b2b', roughness: 1.3, bowing: 0.7 }, opts.stroke || {});
   var rootTranslate = opts.rootTranslate || function () { return [0, 0]; };
   var legW = opts.legWidths || [2.6, 2.2, 1.9];   // thigh / shin / foot stroke
-  var armW = opts.armWidths || [1.9, 1.7];        // upper / fore stroke
+  var armW = opts.armWidths || [1.9, 1.7, 1.5];   // upper / fore / hand stroke
+  var withHands = !!opts.hands;
 
   var poseNames = Object.keys(opts.times).sort(function (a, b) {
     return opts.times[a] - opts.times[b];
   });
+
+  // Ordered joint list for this figure: the shared 11, plus a wrist per arm when
+  // hands:true. Without hands this is exactly FIGURE_JOINTS (soccer, basketball).
+  var joints = ['torso']
+    .concat(withHands ? ['arm1_u', 'arm1_f', 'arm1_h', 'arm2_u', 'arm2_f', 'arm2_h']
+                      : ['arm1_u', 'arm1_f', 'arm2_u', 'arm2_f'])
+    .concat(['leg1_t', 'leg1_s', 'leg1_f', 'leg2_t', 'leg2_s', 'leg2_f']);
 
   var root = document.createElementNS(NS, 'g');
   root.setAttribute('class', opts.rootClass || 'figure-root');
@@ -173,19 +211,53 @@ function buildStickFigure(svg, opts) {
   function arm(shoulder) {
     var u = seg(shoulder, L.upperArm, armW[0]);
     var f = seg(anchorAt(u, L.upperArm, 0), L.forearm, armW[1]);
-    return [u, f];
+    if (!withHands) return [u, f];
+    var h = seg(anchorAt(f, L.forearm, 0), L.hand, armW[2] || armW[1] * 0.85);
+    return [u, f, h];
+  }
+
+  // Head: a circle a neck-gap beyond the torso tip (a captain-review fix from the
+  // soccer kicker), plus an optional front-facing face. By default it is drawn
+  // after the arms so it paints above them; opts.armsOverHead flips that for a
+  // figure whose hand crosses its own face (the hero wave).
+  var head;
+  function makeHead() {
+    head = anchorAt(torso, L.torso + L.neck, 0);
+    head.appendChild(rc.circle(0, 0, L.head, Object.assign({}, STROKE, { fill: 'none', strokeWidth: 1.7 })));
+    if (opts.face) {
+      var hr = L.head;
+      // Counter-rotate by the rest torso angle so features authored in screen
+      // orientation (x = right, y = down) land upright on a vertical-torso
+      // figure; a small torso sway then reads as a gentle head tilt.
+      var faceG = document.createElementNS(NS, 'g');
+      faceG.setAttribute('class', 'figure-face');
+      faceG.setAttribute('transform', 'rotate(' + (-opts.poses[poseNames[0]].torso).toFixed(2) + ')');
+      [-1, 1].forEach(function (sx) {
+        var eye = document.createElementNS(NS, 'circle');
+        eye.setAttribute('cx', (sx * hr * 0.3).toFixed(2));
+        eye.setAttribute('cy', (-hr * 0.14).toFixed(2));
+        eye.setAttribute('r', Math.max(1, hr * 0.1).toFixed(2));
+        eye.setAttribute('fill', STROKE.stroke);
+        faceG.appendChild(eye);
+      });
+      // Smile: a clean shallow arc (its own low roughness so it doesn't blot at
+      // small figure scale).
+      faceG.appendChild(rc.path(
+        'M' + (-hr * 0.3).toFixed(1) + ',' + (hr * 0.16).toFixed(1) +
+        ' Q0,' + (hr * 0.44).toFixed(1) + ' ' + (hr * 0.3).toFixed(1) + ',' + (hr * 0.16).toFixed(1),
+        { stroke: STROKE.stroke, strokeWidth: 1.1, roughness: 0.4, bowing: 0, fill: 'none' }));
+      head.appendChild(faceG);
+    }
   }
 
   var torso = seg(root, L.torso, 2.4);
+  if (opts.armsOverHead) makeHead();
   var shoulder = anchorAt(torso, L.torso * 0.86, 0);
   var a1 = arm(shoulder);
   var a2 = arm(shoulder);
   var l1 = limb3(legW[0], legW[1], legW[2]);
   var l2 = limb3(legW[0], legW[1], legW[2]);
-  // Head after the arms in document order so it paints above them, and beyond
-  // the torso tip by a neck gap (a captain-review fix from the soccer kicker).
-  var head = anchorAt(torso, L.torso + L.neck, 0);
-  head.appendChild(rc.circle(0, 0, L.head, Object.assign({}, STROKE, { fill: 'none', strokeWidth: 1.7 })));
+  if (!opts.armsOverHead) makeHead();
 
   var jointEls = {
     torso: torso,
@@ -193,8 +265,9 @@ function buildStickFigure(svg, opts) {
     leg1_t: l1[0], leg1_s: l1[1], leg1_f: l1[2],
     leg2_t: l2[0], leg2_s: l2[1], leg2_f: l2[2],
   };
+  if (withHands) { jointEls.arm1_h = a1[2]; jointEls.arm2_h = a2[2]; }
   var jointSplines = {};
-  FIGURE_JOINTS.forEach(function (k) {
+  joints.forEach(function (k) {
     // The pivot's line is drawn from local (0,0), so transform-origin '0 0'
     // pins rotation (CSS `rotate` from the keyframes, or `transform` from the
     // fallback channel) to the actual joint, not the SVG viewBox origin.
@@ -221,18 +294,28 @@ function buildStickFigure(svg, opts) {
       x: hip.x + Math.cos(aTorso) * (L.torso + L.neck),
       y: hip.y + Math.sin(aTorso) * (L.torso + L.neck),
     };
-    function armChain(uKey, fKey) {
+    function armChain(uKey, fKey, hKey) {
       var aU = aTorso + jointSplines[uKey](t) * DEG;
       var elbow = {
         x: shoulderPt.x + Math.cos(aU) * L.upperArm,
         y: shoulderPt.y + Math.sin(aU) * L.upperArm,
       };
       var aF = aU + jointSplines[fKey](t) * DEG;
-      var hand = {
+      var wrist = {
         x: elbow.x + Math.cos(aF) * L.forearm,
         y: elbow.y + Math.sin(aF) * L.forearm,
       };
-      return { elbow: elbow, hand: hand };
+      // Without a hand joint (soccer, basketball) the "hand" is the forearm tip,
+      // exactly as before.
+      var hand = wrist;
+      if (hKey && jointSplines[hKey]) {
+        var aH = aF + jointSplines[hKey](t) * DEG;
+        hand = {
+          x: wrist.x + Math.cos(aH) * L.hand,
+          y: wrist.y + Math.sin(aH) * L.hand,
+        };
+      }
+      return { elbow: elbow, wrist: wrist, hand: hand };
     }
     function legChain(tKey, sKey, fKey) {
       var aTh = jointSplines[tKey](t) * DEG;
@@ -252,8 +335,8 @@ function buildStickFigure(svg, opts) {
       };
       return { knee: knee, ankle: ankle, toe: toe };
     }
-    var arm1 = armChain('arm1_u', 'arm1_f');
-    var arm2 = armChain('arm2_u', 'arm2_f');
+    var arm1 = armChain('arm1_u', 'arm1_f', 'arm1_h');
+    var arm2 = armChain('arm2_u', 'arm2_f', 'arm2_h');
     return {
       hip: hip, shoulder: shoulderPt, head: headPt,
       arm1: arm1, arm2: arm2, hand1: arm1.hand, hand2: arm2.hand,
@@ -263,7 +346,7 @@ function buildStickFigure(svg, opts) {
   }
 
   return {
-    root: root, jointEls: jointEls, jointSplines: jointSplines,
+    root: root, jointEls: jointEls, jointSplines: jointSplines, joints: joints,
     idlePose: opts.poses[poseNames[0]], fk: fk,
   };
 }
@@ -394,7 +477,7 @@ function buildScrubStylesheet(cfg) {
   if (cfg.figure) {
     var fig = cfg.figure;
     var jSteps = fig.steps || 48;
-    FIGURE_JOINTS.forEach(function (k) {
+    (fig.joints || FIGURE_JOINTS).forEach(function (k) {
       var jframes = '';
       for (var i = 0; i <= jSteps; i++) {
         var prog = (i / jSteps) * fig.endT;
@@ -426,7 +509,7 @@ function buildScrubStylesheet(cfg) {
  *   ns:       'hero'                  keyframe-name namespace
  *   scene:    '.hero__figure'         selector every rule is scoped under
  *   period:   '4600ms'               one loop's duration
- *   figure?:  { jointSplines, idlePose?, steps=64 }
+ *   figure?:  { jointSplines, joints?, idlePose?, steps=64 }
  *   tracks?:  [ { selector, property, spline:(prog)=>value, steps=48 } ]
  *             prog runs 0..1 over one period; spline(0) must equal spline(1).
  * }
@@ -454,7 +537,7 @@ function buildLoopStylesheet(cfg) {
   if (cfg.figure) {
     var fig = cfg.figure;
     var jSteps = fig.steps || 64;
-    FIGURE_JOINTS.forEach(function (k) {
+    (fig.joints || FIGURE_JOINTS).forEach(function (k) {
       var jframes = '';
       for (var i = 0; i <= jSteps; i++) {
         var prog = i / jSteps;
@@ -503,10 +586,11 @@ function pinnedScrubFallback(cfg) {
 
 /* Channel factories - each neutralises its element's inert CSS animation in
  * setup() and writes only compositor-friendly properties in update(). */
-function figureJointsChannel(jointEls, jointSplines, endT) {
+function figureJointsChannel(jointEls, jointSplines, endT, joints) {
+  var J = joints || FIGURE_JOINTS;
   return {
     setup: function () {
-      FIGURE_JOINTS.forEach(function (k) {
+      J.forEach(function (k) {
         jointEls[k].style.animation = 'none';
         jointEls[k].style.rotate = '0deg';           // CSS `rotate` off; transform owns it
         jointEls[k].style.willChange = 'transform';
@@ -515,7 +599,7 @@ function figureJointsChannel(jointEls, jointSplines, endT) {
     },
     update: function (p) {
       var kp = Math.min(p, endT);
-      FIGURE_JOINTS.forEach(function (k) {
+      J.forEach(function (k) {
         jointEls[k].style.transform = 'rotate(' + jointSplines[k](kp) + 'deg)';
       });
     },
@@ -599,6 +683,7 @@ function supportsScrollDrivenAnimation() {
 window.ScrubVignette = {
   hermiteSpline: hermiteSpline,
   easeOutOfRest: easeOutOfRest,
+  easeLaunch: easeLaunch,
   worldPose: worldPose,
   FIGURE_JOINTS: FIGURE_JOINTS,
   FIGURE_LENGTHS: FIGURE_LENGTHS,

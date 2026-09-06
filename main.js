@@ -84,38 +84,50 @@ function setupHeroEntrance() {
 }
 
 /* ============================================================================
- * Hero - a looping idle wave on the shared stick-figure rig
+ * Hero - a front-facing looping "hello" wave on the shared stick-figure rig
  * ----------------------------------------------------------------------------
  * Same rig as the soccer + basketball figures (SV.buildStickFigure), so the
- * landing-page character reads as the same person. It is NOT scroll-driven: the
+ * landing-page character reads as the same person - here seen head-on: two eyes
+ * + a smile (opts.face), a symmetric stance, and a raised waving arm that gets a
+ * wrist joint (opts.hands) for follow-through. It is NOT scroll-driven: the
  * hermite pose splines are baked into @keyframes by SV.buildLoopStylesheet and
  * played `linear infinite` over HERO_PERIOD - the compositor loops the joint
  * rotate tracks, no rAF, no per-frame JS.
  *
- * The wave is a real multi-joint motion: the waving arm's upper arm holds raised
- * while the forearm (arm2_f) swings through several passes with follow-through,
- * then the whole arm lowers to the side. A ~3deg torso sway reads as breathing.
- * First and last pose are identical so the loop wraps with no jump / no kink.
+ * The wave is a side-to-side swing of the raised hand: the upper arm (arm2_u)
+ * holds up while the forearm (arm2_f) swings left<->right across an arc and the
+ * hand (arm2_h) trails a beat behind it (overlap / follow-through). The other
+ * arm (arm1) just hangs at the side; a ~1.5deg torso sway reads as breathing.
+ * First and last pose (rest / rest2) are identical so the loop wraps clean.
  *
- * Poses are WORLD angles (0 = +x, -90 = straight up), converted with worldPose.
- * arm2 = the waving arm (drawn after arm1, so it paints in front); arm1 just
- * hangs at the side, held there the whole loop. Both arms rest a little forward
- * of vertical - a dead-vertical hang buries them in the torso line.
+ * Poses are WORLD angles (0 = +x / viewer's right, -90 = straight up), converted
+ * with worldPose. arm2 (drawn 2nd) is the waving arm on the viewer's right;
+ * armsOverHead paints both arms above the head so the hand can cross the face.
  * ==========================================================================*/
-const HERO_POSES = {
-  rest:  { torso: -90, arm1_u: 82, arm1_f: 94, arm2_u:  70, arm2_f:  96,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
-  lift:  { torso: -89, arm1_u: 83, arm1_f: 93, arm2_u: -64, arm2_f: -78,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
-  waveA: { torso: -88, arm1_u: 84, arm1_f: 92, arm2_u: -66, arm2_f: -52,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
-  waveB: { torso: -87, arm1_u: 84, arm1_f: 92, arm2_u: -60, arm2_f: -100, leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
-  waveC: { torso: -88, arm1_u: 84, arm1_f: 92, arm2_u: -66, arm2_f: -54,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
-  waveD: { torso: -88, arm1_u: 84, arm1_f: 92, arm2_u: -62, arm2_f: -96,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
-  drop:  { torso: -89, arm1_u: 83, arm1_f: 93, arm2_u:  30, arm2_f:  40,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
-  rest2: { torso: -90, arm1_u: 82, arm1_f: 94, arm2_u:  70, arm2_f:  96,  leg1_t: 96, leg1_s: 88, leg1_f: 8, leg2_t: 85, leg2_s: 92, leg2_f: 10 },
+// Everything except the torso sway and the waving arm (arm2_*) is constant
+// across the loop - authored once here and spread into every pose.
+const HERO_REST = {
+  torso: -90,
+  arm1_u: 125, arm1_f: 118, arm1_h: 110,   // resting arm, swung clear of the torso
+  arm2_u:  55, arm2_f:  62, arm2_h:  70,    // waving arm, down (rest only)
+  leg1_t: 100, leg1_s: 99, leg1_f: 122,     // symmetric stance, slight splay
+  leg2_t:  80, leg2_s: 81, leg2_f:  58,
 };
-// rest at 0 and rest2 at 1 are identical, with a rest hold at each end of the
-// cycle (0 -> 0.13 and 0.85 -> 1) so the seam sits inside a still beat.
-const HERO_T = { rest: 0, lift: 0.13, waveA: 0.29, waveB: 0.43, waveC: 0.57, waveD: 0.71, drop: 0.85, rest2: 1 };
+const HERO_POSES = {
+  rest:  HERO_REST,
+  lift:  { ...HERO_REST, torso: -89.5, arm2_u: -48, arm2_f:  -66, arm2_h: -44 },
+  waveA: { ...HERO_REST, torso: -88.5, arm2_u: -44, arm2_f:  -40, arm2_h: -58 },
+  waveB: { ...HERO_REST, torso: -89,   arm2_u: -50, arm2_f: -100, arm2_h: -80 },
+  waveC: { ...HERO_REST, torso: -88.5, arm2_u: -44, arm2_f:  -44, arm2_h: -60 },
+  waveD: { ...HERO_REST, torso: -89,   arm2_u: -50, arm2_f:  -96, arm2_h: -78 },
+  drop:  { ...HERO_REST, torso: -89.5, arm2_u:  34, arm2_f:   52, arm2_h:  30 },
+  rest2: HERO_REST,
+};
+// rest at 0 and rest2 at 1 are identical, with a still hold at each end of the
+// cycle (0 -> 0.12 and 0.86 -> 1) so the loop seam sits inside a quiet beat.
+const HERO_T = { rest: 0, lift: 0.12, waveA: 0.27, waveB: 0.42, waveC: 0.57, waveD: 0.72, drop: 0.86, rest2: 1 };
 const HERO_PERIOD = '4600ms';
+const HERO_LENGTHS = { neck: 12, torso: 34, thigh: 27, shin: 25, foot: 12, upperArm: 17, forearm: 16, hand: 7, head: 18 };
 
 function setupHero() {
   const svg = document.querySelector('.hero__figure');
@@ -126,19 +138,23 @@ function setupHero() {
 
   const figure = SV.buildStickFigure(svg, {
     anchor: { x: 60, y: 92 },
-    lengths: { neck: 12, torso: 34, thigh: 27, shin: 25, foot: 12, upperArm: 17, forearm: 16, head: 18 },
+    lengths: HERO_LENGTHS,
     legWidths: [2.9, 2.4, 2.0],
-    armWidths: [2.1, 1.9],
+    armWidths: [2.1, 1.9, 1.7],
     poses,
     times: HERO_T,
-    stroke: { roughness: 1.0, bowing: 0.6 },
+    stroke: { roughness: 0.75, bowing: 0.35 },
     rootClass: 'hero-figure',
+    hands: true,
+    face: true,
+    armsOverHead: true,
   });
 
-  // Reduced motion: a still resting pose, no loop stylesheet, no rAF.
+  // Reduced motion: freeze on a static mid-wave "hand up" hold - front-facing,
+  // no loop stylesheet, no rAF.
   if (REDUCED) {
-    SV.FIGURE_JOINTS.forEach(k => {
-      figure.jointEls[k].style.rotate = (+figure.idlePose[k]).toFixed(3) + 'deg';
+    figure.joints.forEach(k => {
+      figure.jointEls[k].style.rotate = figure.jointSplines[k](HERO_T.waveA).toFixed(3) + 'deg';
     });
     return;
   }
@@ -149,7 +165,7 @@ function setupHero() {
     ns: 'hero',
     scene: '.hero__figure',
     period: HERO_PERIOD,
-    figure: { jointSplines: figure.jointSplines, idlePose: figure.idlePose, steps: 72 },
+    figure: { jointSplines: figure.jointSplines, joints: figure.joints, idlePose: figure.idlePose, steps: 72 },
   });
   document.head.appendChild(style);
 }
@@ -328,7 +344,7 @@ function setupSoccer() {
  * Basketball - decorative scroll-scrub (a figure rises for a jump shot)
  * ----------------------------------------------------------------------------
  * The second section on the shared module. Choreography:
- *   stand -> gather (deep dip) -> rise -> apex release -> land, absorb -> watch
+ *   stand -> gather (deep dip) -> rise -> drive/release -> follow-through -> land -> watch
  * The whole figure leaves the ground on a jump arc baked from two hermite
  * splines (BASKET_JX / BASKET_JY, a translate track on .figure-root). Through
  * stand -> gather -> rise the ball is locked to the shooting hand: the
@@ -345,24 +361,32 @@ function setupSoccer() {
 // WORLD angles: 0 = toward the hoop (right), -90 = straight up, +90 = straight
 // down. leg1 = front leg, leg2 = trail leg. Legs keep a visible knee bend
 // through the jump so the figure reads as a body, not a pole.
-// arm1 = shooting arm (its hand is the release point, see figure.fk below);
-// arm2 = guide / off hand. The guide arm holds its raised release attitude from
-// `rise` through `land` (a beat past BASKET_RELEASE_T = apex) and only lowers to
-// the side on the way to `watch` - a jump-shot follow-through, not a hand that
-// drops the instant the ball leaves.
+// arm1 = shooting arm (its hand is the release point, see figure.fk below).
+// Through `rise -> apex` it DRIVES up and forward toward the hoop - the elbow
+// straightens and the wrist snaps over ("goose-neck" follow-through), so the arm
+// is still extending as the ball leaves at BASKET_RELEASE_T and keeps reaching
+// after. arm2 = guide / off hand: it holds its raised attitude from `rise`
+// through `land` (well past BASKET_RELEASE_T) and only lowers on the way to
+// `watch` - a real jump shot, not a hand that just opens at the top.
 const BASKET_POSES = {
   stand:  { torso: -85, arm1_u: 60,  arm1_f: 22,  arm2_u: 72,  arm2_f: 28,  leg1_t: 83,  leg1_s: 92,  leg1_f: 6,   leg2_t: 97,  leg2_s: 89,  leg2_f: 6 },
   gather: { torso: -66, arm1_u: 76,  arm1_f: 44,  arm2_u: 90,  arm2_f: 48,  leg1_t: 70,  leg1_s: 116, leg1_f: 20,  leg2_t: 62,  leg2_s: 120, leg2_f: 18 },
-  rise:   { torso: -86, arm1_u: 4,   arm1_f: -58, arm2_u: -8,  arm2_f: -52, leg1_t: 84,  leg1_s: 104, leg1_f: 52,  leg2_t: 92,  leg2_s: 108, leg2_f: 54 },
-  apex:   { torso: -90, arm1_u: -77, arm1_f: -90, arm2_u: -22, arm2_f: 20,  leg1_t: 72,  leg1_s: 122, leg1_f: 60,  leg2_t: 104, leg2_s: 96,  leg2_f: 64 },
-  land:   { torso: -82, arm1_u: -58, arm1_f: -46, arm2_u: -22, arm2_f: 22,  leg1_t: 66,  leg1_s: 118, leg1_f: 8,   leg2_t: 94,  leg2_s: 114, leg2_f: 12 },
-  watch:  { torso: -89, arm1_u: -46, arm1_f: -36, arm2_u: 70,  arm2_f: 24,  leg1_t: 84,  leg1_s: 91,  leg1_f: 6,   leg2_t: 96,  leg2_s: 89,  leg2_f: 6 },
+  rise:   { torso: -86, arm1_u: -6,  arm1_f: -66, arm2_u: -4,  arm2_f: -48, leg1_t: 84,  leg1_s: 104, leg1_f: 52,  leg2_t: 92,  leg2_s: 108, leg2_f: 54 },
+  apex:   { torso: -90, arm1_u: -52, arm1_f: -24, arm2_u: -22, arm2_f: 16,  leg1_t: 72,  leg1_s: 122, leg1_f: 60,  leg2_t: 104, leg2_s: 96,  leg2_f: 64 },
+  land:   { torso: -82, arm1_u: -40, arm1_f: -14, arm2_u: -20, arm2_f: 18,  leg1_t: 66,  leg1_s: 118, leg1_f: 8,   leg2_t: 94,  leg2_s: 114, leg2_f: 12 },
+  watch:  { torso: -89, arm1_u: -30, arm1_f: -26, arm2_u: 70,  arm2_f: 24,  leg1_t: 84,  leg1_s: 91,  leg1_f: 6,   leg2_t: 96,  leg2_s: 89,  leg2_f: 6 },
 };
-// Timing: the shot motion (gather -> rise -> apex) spans ~15% of the scroll so
-// the arm snap has room to breathe; the figure settles by ~watch and then holds
-// while the ball completes its flight over the remaining ~54%.
-const BASKET_T = { stand: 0, gather: 0.12, rise: 0.22, apex: 0.30, land: 0.42, watch: 0.52 };
-const BASKET_RELEASE_T = BASKET_T.apex;
+// Timing: the shot motion (gather -> rise -> apex) spans ~18% of the scroll so
+// the arm drive has room to read; the figure settles by ~watch and then holds
+// while the ball completes its flight. BASKET_RELEASE_T sits a touch before the
+// `apex` pose so the body is still rising into the shot as the ball leaves - and
+// it is the one constant every gated tween (ball, trail, carry, flourish) keys
+// off, so retiming here carries them all.
+const BASKET_T = { stand: 0, gather: 0.12, rise: 0.22, apex: 0.30, land: 0.44, watch: 0.56 };
+// A touch before the `apex` pose: the shooting arm is still driving up-and-out
+// and the body is still rising, so the ball leaves with the hand's own pace (no
+// velocity step at the handoff) rather than trailing off it at the top.
+const BASKET_RELEASE_T = 0.26;
 
 // The jump arc: px offset of the whole figure vs scroll fraction (lift peaks at
 // the apex/release, back on the ground by ~land).
@@ -483,14 +507,26 @@ function setupBasket() {
   const rim = scene.rim;
   const netRest = { x: rim.x + 2, y: rim.y + 36 };
 
-  // Flight arc: a calm rainbow from the release point (the hand) into the rim,
-  // then a short drop through the net (the ball path only - the chalk trail
-  // stops at the rim).
+  // Flight arc. The ball leaves the way a real shot does: along the shooting
+  // hand's own velocity at release (so the hand -> arc handoff has no kink),
+  // carrying clearly forward toward the hoop before gravity bends it down. The
+  // chalk trail stops at the rim; the ball path then drops through the net.
   const f1 = n => n.toFixed(1);
-  const peakY = Math.min(rp.y, rim.y) - 64;
+  const relStep = 0.006;
+  const rpAhead = figure.fk(BASKET_RELEASE_T + relStep).hand1;
+  const vRel = { x: (rpAhead.x - rp.x) / relStep, y: (rpAhead.y - rp.y) / relStep };
+  const vRelLen = Math.hypot(vRel.x, vRel.y) || 1;
+  const reach = Math.hypot(rim.x - rp.x, rim.y - rp.y);
+  // c1: shove out along the release heading (~38% of the way to the rim reads as
+  // a genuine push); c2: pull the arc over its peak and down into the rim.
+  const c1 = {
+    x: rp.x + (vRel.x / vRelLen) * reach * 0.38,
+    y: rp.y + (vRel.y / vRelLen) * reach * 0.38,
+  };
+  const c2 = { x: rim.x - reach * 0.24, y: Math.min(rp.y, rim.y, c1.y) - 34 };
   const arcD =
     `M${f1(rp.x)},${f1(rp.y)} ` +
-    `C ${f1(rp.x + 86)},${f1(peakY)} ${f1(rim.x - 104)},${f1(peakY + 6)} ${f1(rim.x)},${f1(rim.y)}`;
+    `C ${f1(c1.x)},${f1(c1.y)} ${f1(c2.x)},${f1(c2.y)} ${f1(rim.x)},${f1(rim.y)}`;
   const ballD = arcD +
     ` C ${f1(rim.x + 11)},${f1(rim.y + 15)} ${f1(netRest.x + 3)},${f1(netRest.y - 10)} ${f1(netRest.x)},${f1(netRest.y)}`;
 
@@ -503,7 +539,10 @@ function setupBasket() {
   shadow.setAttribute('cx', f1(figure.fk(0).hip.x + 4));
   shadow.setAttribute('cy', f1(scene.floorY + 2));
 
-  const flightEase = SV.easeOutOfRest(0.05);
+  // Ball leaves at the hand's release speed (not eased up from rest) so the
+  // handoff has no velocity step. a = (hand speed) / (mean path speed), both in
+  // viewBox units per unit scroll-fraction; easeLaunch clamps it to [1, 1.95].
+  const flightEase = SV.easeLaunch(vRelLen / (path.getTotalLength() / (1 - BASKET_RELEASE_T)));
   // (hand(t) - releasePoint): the carry wrapper's translate. Clamped at
   // BASKET_RELEASE_T so it is exactly [0,0] at (and after) the handoff.
   const carryFn = t => {
