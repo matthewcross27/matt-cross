@@ -56,8 +56,9 @@ was PR #1's shipped version, later replaced. Sharp edges if you touch this secti
   `.section--pinned` (see `style.css`); `buildSoccerScrubCSS()` generates the
   `@keyframes` + `animation-timeline: --soc-tl` rules bound to it. `setupSoccerFallback()`
   is a JS rAF 1:1 driver for engines without support (gated on
-  `CSS.supports('animation-timeline','scroll()')`, class `no-sda`) - keep it working; it
-  reuses `svgTransformDriver`/`svgRotationDriver`.
+  `CSS.supports('animation-timeline','scroll()')`) - keep it working; it neutralises the
+  CSS animations with inline `animation: none` and reuses
+  `svgTransformDriver`/`svgRotationDriver`.
 - The timeline's `contain` range is *exactly* the CSS-sticky pin window, so the pin
   geometry still matters. The single `.section__pin` wrapper (child of `.section--pinned`,
   parent of `.section__anim`/`.section__content`) carries the `position: sticky`, so the

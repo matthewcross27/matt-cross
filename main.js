@@ -233,6 +233,7 @@ function buildSoccerScrubCSS(opts) {
   const contactPct = +(CONTACT_T * 100).toFixed(3);
   const followPct = +(FOLLOW_T * 100).toFixed(3);
   const fadeEndPct = +((FOLLOW_T + 0.08) * 100).toFixed(3);
+  const shadowEndPct = +(SHADOW_END_T * 100).toFixed(3);
 
   // Ball flight is eased out of rest (ballFlightEase) so a fast flick or the
   // keyframe sampling can't snap it onto the path in one frame (the ~25px
@@ -270,7 +271,7 @@ function buildSoccerScrubCSS(opts) {
   return [
     '@keyframes soc-ball{' + ballKf + '100%{offset-distance:100%}}',
     '@keyframes soc-trail{' + trailKf + '100%{stroke-dashoffset:0}}',
-    '@keyframes soc-shadow{0%,' + contactPct + '%{opacity:1}78%,100%{opacity:.05}}',
+    '@keyframes soc-shadow{0%,' + contactPct + '%{opacity:1}' + shadowEndPct + '%,100%{opacity:.05}}',
     '@keyframes soc-crowd{from{translate:0 0}to{translate:-22px 0}}',
     '@keyframes soc-pitch{from{translate:0 0}to{translate:-8px 0}}',
     '@keyframes soc-kicker-fade{0%,' + followPct + '%{opacity:1}' + fadeEndPct + '%,100%{opacity:0}}',
@@ -416,6 +417,11 @@ function netPulse(pitchDrv) {
 // construction, the point the generated ball/trail/shadow keyframes hold flat
 // until). Single source, shared with the JS fallback.
 const CONTACT_T = KICK_T.contact;
+// Scroll fraction the ball shadow finishes fading at: the flight starts at
+// CONTACT_T and the shadow fades over its first 75% (matches the pre-refactor
+// GSAP tween's `duration: FLIGHT_D * 0.75`). Kept derived so a KICK_T retime
+// carries it, like every other timing value in buildSoccerScrubCSS.
+const SHADOW_END_T = CONTACT_T + (1 - CONTACT_T) * 0.75;
 
 function setupSoccer() {
   const section = document.getElementById('sec-soccer');
@@ -505,8 +511,6 @@ function setupSoccerFallback(ctx) {
   const crowd = svg.querySelector('.layer-crowd');
   const pitch = svg.querySelector('.layer-pitch');
 
-  document.documentElement.classList.add('no-sda');
-
   // Hand every animated property to JS: neutralise the CSS scroll-driven
   // animations (on an engine without support the shorthand's default 0s
   // duration would otherwise snap each element to its end state) and any base
@@ -559,7 +563,7 @@ function setupSoccerFallback(ctx) {
     ballDrv.state.y = pt.y;
     ballDrv.apply();
     trail.style.strokeDashoffset = pathLen * (1 - d);
-    const sf = Math.max(0, Math.min(1, (p - CONTACT_T) / (0.78 - CONTACT_T)));
+    const sf = Math.max(0, Math.min(1, (p - CONTACT_T) / (SHADOW_END_T - CONTACT_T)));
     shadow.style.opacity = String(1 - 0.95 * sf);
     crowd.style.translate = (-22 * p) + 'px 0';
     pitch.style.translate = (-8 * p) + 'px 0';
