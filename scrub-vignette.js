@@ -437,6 +437,14 @@ function buildScrubStylesheet(cfg) {
   }
 
   // --- generic tracks ---------------------------------------------------------
+  // Each track is its own @keyframes. The binding rules are collected BY SELECTOR
+  // and emitted once per selector: `animation` shorthand is not additive, so two
+  // tracks on one element (e.g. the guitar carriage's translate + rotate + scale)
+  // would clobber each other if each got its own rule. One track per selector -
+  // the soccer / basketball case - emits exactly the single-track rule as before,
+  // so their generated stylesheet is byte-identical.
+  var trackSelectors = [];              // first-seen order
+  var trackNamesBySelector = {};
   (cfg.tracks || []).forEach(function (tr, idx) {
     var name = ns + '-t' + idx;
     var frames = '';
@@ -468,7 +476,19 @@ function buildScrubStylesheet(cfg) {
       frames = '0%,' + hp + '%{opacity:1}' + ep + '%,100%{opacity:0}';
     }
     kf.push('@keyframes ' + name + '{' + frames + '}');
-    rules.push(rule(scene + ' ' + tr.selector, name));
+    var sel = scene + ' ' + tr.selector;
+    if (!trackNamesBySelector[sel]) { trackNamesBySelector[sel] = []; trackSelectors.push(sel); }
+    trackNamesBySelector[sel].push(name);
+  });
+  trackSelectors.forEach(function (sel) {
+    var names = trackNamesBySelector[sel];
+    if (names.length === 1) { rules.push(rule(sel, names[0])); return; }
+    // Comma-joined lists: one entry per track, each bound to the same timeline
+    // and range.
+    rules.push(sel + '{animation:' +
+      names.map(function (n) { return n + ' linear both'; }).join(',') +
+      ';animation-timeline:' + names.map(function () { return TL; }).join(',') +
+      ';animation-range:' + names.map(function () { return RANGE; }).join(',') + '}');
   });
 
   // --- figure joints: one rotate spline per joint, sampled, then held flat.

@@ -30,10 +30,12 @@ function init() {
     document.querySelector('.hero').classList.add('is-loaded');
     // Hero figure renders in a still resting pose (no loop, no rAF). Soccer
     // stays title + caption only in reduced motion (its scene is never built).
-    // Basketball draws a single static "made shot" frame - it has a natural
-    // resting composition (ball in the net) that reads without motion.
+    // Basketball and guitar each draw a single static frame - each has a natural
+    // resting composition (ball in the net; a guitarist stood playing) that
+    // reads without motion.
     setupHero();
     setupBasket();
+    setupGuitar();
     return;
   }
   setupHeroEntrance();
@@ -674,105 +676,424 @@ function netSway(netDrv) {
   });
 }
 
+/* ============================================================================
+ * Guitar - decorative scroll-scrub (a guitarist crosses the frame, turns once)
+ * ----------------------------------------------------------------------------
+ * The third and last section on the shared scrub-vignette.js module - direction
+ * B from the guitar-decorative scout. A stick-figure guitarist (the same rig as
+ * soccer / basketball / the hero, here in profile with `hands` for the strum
+ * follow-through) crosses the whole frame left -> right while a camera function
+ * pans the room the opposite way to partly follow. At the mid-beat the player
+ * plants and executes ONE dance-turn: a 2-D pivot (scaleX eased through 0 twice
+ * = a 360), limbs tuck to hug the guitar, a small hop, a slight lean in and out.
+ * Then the stride and strum resume and the player walks out of frame.
+ *
+ * Strict 1:1 native CSS scroll-driven animation (no numeric scrub, no wall-clock
+ * loop) - the traverse (translate), the turn lean (rotate) and the pivot (scale)
+ * are three independent-property tracks on .figure-root, emitted as one
+ * comma-joined `animation:` rule by buildScrubStylesheet's per-selector track
+ * collection. SV.pinnedScrubFallback drives the identical motion where CSS
+ * scroll-driven animation is unsupported. Reduced motion: one static
+ * "standing and playing" frame, no rAF, no scrub stylesheet (basketball's
+ * pattern). Everything is scroll-linked; nothing moves when the section is
+ * parked - including the drifting music notes.
+ *
+ * The walk / strum / turn-tuck are a PROCEDURAL joint-angle cycle (guitarPoseAt,
+ * WORLD degrees) sampled into a dense pose set the rig's hermiteSpline path
+ * consumes normally. Poses that read at rest are authored in GUITAR_REST.
+ * ==========================================================================*/
+const GUITAR_ANCHOR    = { x: 300, y: 246 };
+const GUITAR_FLOOR_Y   = 300;
+const GUITAR_LENGTHS   = { neck: 9, torso: 41, thigh: 32, shin: 30, foot: 12, upperArm: 19, forearm: 16, hand: 8, head: 16 };
+const GUITAR_LEG_W     = [3.4, 2.9, 2.4];
+const GUITAR_ARM_W     = [2.3, 2.0, 1.7];
+const GUITAR_TORSO_LEAN = -83;
+const GUITAR_GAIT      = { strides: 5.0, reach: 25, knee: 24, bob: 6, hip: 1.4 };
+const GUITAR_STRUM     = { beats: 6.0 };
+const GUITAR_PIVOT_AT  = 0.50;
+const GUITAR_PIVOT_SPAN = 0.17;
+const GUITAR_STEPS     = 96;
+// full-width traverse: off-left -> off-right, eased, with a brief plant at the
+// pivot so the turn reads as deliberate (not mid-stride).
+const GUITAR_CROSS_KNOTS = [
+  { t: 0, v: -430 }, { t: 0.16, v: -250 }, { t: 0.38, v: -70 },
+  { t: 0.50, v: 0 }, { t: 0.62, v: 74 }, { t: 0.84, v: 300 }, { t: 1, v: 470 },
+];
+// a relaxed standing-and-playing world pose - the reduced-motion freeze frame.
+const GUITAR_REST = {
+  torso: -87,
+  arm1_u: 52, arm1_f: 96, arm1_h: 100,
+  arm2_u: -166, arm2_f: -184, arm2_h: -196,
+  leg1_t: 84, leg1_s: 94, leg1_f: 4,
+  leg2_t: 104, leg2_s: 90, leg2_f: 8,
+};
+
+// 0..1 across the turn window, ease-in-out (slow prep, quick spin, slow settle).
+function guitarPivotU(p) {
+  const s0 = GUITAR_PIVOT_AT - GUITAR_PIVOT_SPAN / 2;
+  const s1 = GUITAR_PIVOT_AT + GUITAR_PIVOT_SPAN / 2;
+  const raw = p <= s0 ? 0 : p >= s1 ? 1 : (p - s0) / (s1 - s0);
+  return raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2;
+}
+
+// Procedural motion cycle -> a joint->WORLD-deg object for a given scroll
+// fraction. The player never settles in direction B (they walk clean across and
+// out), so the gait envelope is a constant 1; the turn window pulls the limbs
+// into a tight "hug the guitar" spot pose so the figure reads as a dancer
+// turning, not a shape being squashed.
+function guitarPoseAt(p) {
+  const g = GUITAR_GAIT;
+  const stride = 2 * Math.PI * (g.strides * p + 0.15);
+  const swing  = Math.sin(stride);
+  const swing2 = Math.sin(stride + Math.PI);
+  const lift   = Math.max(0, Math.sin(stride * 2));
+  const lift2  = Math.max(0, Math.sin(stride * 2 + Math.PI));
+  const bob    = -Math.abs(Math.cos(stride)) * g.bob;
+
+  const beat = 2 * Math.PI * (GUITAR_STRUM.beats * p);
+  const strumPhase = Math.sin(beat);
+  const strumFast  = Math.sin(beat * 2);
+
+  const pose = {
+    torso: GUITAR_TORSO_LEAN + strumPhase * 2.2 + swing * g.hip,
+    // front strum arm: elbow over the lower bout, forearm + wrist sweep an arc
+    // across the strings at the sound hole (down-stroke low, up-stroke high).
+    arm1_u: 52 + strumPhase * 5,
+    arm1_f: 96 + strumPhase * 24 + strumFast * 5,
+    arm1_h: 100 + strumPhase * 18,
+    // back fret arm: reaches out to the left with a slight elbow bend and a
+    // curled wrist, hand landing mid-neck (the guitar holds the neck up at
+    // ~24deg) - well clear of the head. A small drift with the beat.
+    arm2_u: -166 + Math.sin(beat) * 2,
+    arm2_f: -184 + Math.sin(beat + 1) * 3,
+    arm2_h: -196,
+    // legs: enveloped walk swing / knee-lift.
+    leg1_t: 96 + swing * g.reach,
+    leg1_s: 92 + lift * g.knee,
+    leg1_f: 4 + lift * 10,
+    leg2_t: 96 + swing2 * g.reach,
+    leg2_s: 92 + lift2 * g.knee,
+    leg2_f: 4 + lift2 * 10,
+  };
+
+  const s0 = GUITAR_PIVOT_AT - GUITAR_PIVOT_SPAN / 2;
+  const s1 = GUITAR_PIVOT_AT + GUITAR_PIVOT_SPAN / 2;
+  if (p > s0 && p < s1) {
+    const tuck = Math.sin(((p - s0) / (s1 - s0)) * Math.PI);   // 0 -> 1 -> 0
+    const tw = (a, target) => a + tuck * (target - a);
+    // stop strumming and HUG the guitar in tight to turn with it - both hands
+    // onto the body / neck, torso vertical, trailing foot lifts to a small passe.
+    pose.arm1_u = tw(pose.arm1_u, 86);
+    pose.arm1_f = tw(pose.arm1_f, 150);
+    pose.arm1_h = tw(pose.arm1_h, 172);
+    pose.arm2_u = tw(pose.arm2_u, 40);
+    pose.arm2_f = tw(pose.arm2_f, -120);
+    pose.arm2_h = tw(pose.arm2_h, -142);
+    pose.leg1_t = tw(pose.leg1_t, 95);
+    pose.leg1_s = tw(pose.leg1_s, 95);
+    pose.leg2_t = tw(pose.leg2_t, 110);
+    pose.leg2_s = tw(pose.leg2_s, 146);
+    pose.leg2_f = tw(pose.leg2_f, 24);
+    pose.torso  = tw(pose.torso, -89);
+  }
+  pose._bob = bob;
+  return pose;
+}
+
+// The room: drawn once, static rough.js (no live filters). Sparse interior -
+// "what you play when no one's around": a framed picture (parallax-fast / far),
+// a window with a soft light slab on the floor (parallax-medium), a low stool
+// (parallax-medium), one floor line + a few boards (parallax-slow).
+function buildGuitarScene(svg) {
+  const rc = rough.svg(svg);
+  const NS = 'http://www.w3.org/2000/svg';
+  const INK = '#2b2b2b';
+  const GUITAR = '#7d5f86';
+  const floorY = GUITAR_FLOOR_Y;
+  const g = () => document.createElementNS(NS, 'g');
+
+  function replace(cls, node) {
+    const host = svg.querySelector('.' + cls);
+    if (!host) return;
+    host.innerHTML = '';
+    host.appendChild(node);
+  }
+
+  const wall = g();
+  wall.setAttribute('opacity', '0.34');
+  wall.appendChild(rc.rectangle(28, 150, 62, 46, { stroke: INK, strokeWidth: 1.1, roughness: 1.6, fill: 'none' }));
+  wall.appendChild(rc.line(38, 184, 66, 162, { stroke: INK, strokeWidth: 0.7, roughness: 1.8 }));
+  wall.appendChild(rc.line(66, 162, 74, 184, { stroke: INK, strokeWidth: 0.7, roughness: 1.8 }));
+  replace('layer-wall', wall);
+
+  const win = g();
+  win.setAttribute('opacity', '0.72');
+  win.appendChild(rc.polygon([[402, floorY], [500, floorY], [540, floorY + 46], [356, floorY + 46]], {
+    stroke: 'none', fill: 'rgba(125,95,134,0.10)', fillStyle: 'solid',
+  }));
+  win.appendChild(rc.rectangle(392, 84, 116, 118, { stroke: INK, strokeWidth: 1.3, roughness: 1.0, bowing: 0.4, fill: 'none' }));
+  win.appendChild(rc.line(450, 84, 450, 202, { stroke: INK, strokeWidth: 1.0, roughness: 1.0 }));
+  win.appendChild(rc.line(392, 143, 508, 143, { stroke: INK, strokeWidth: 1.0, roughness: 1.0 }));
+  replace('layer-window', win);
+
+  const props = g();
+  props.setAttribute('opacity', '0.8');
+  props.appendChild(rc.line(96, floorY - 28, 90, floorY, { stroke: INK, strokeWidth: 1.5, roughness: 1.1 }));
+  props.appendChild(rc.line(124, floorY - 28, 130, floorY, { stroke: INK, strokeWidth: 1.5, roughness: 1.1 }));
+  props.appendChild(rc.line(90, floorY - 28, 130, floorY - 28, { stroke: INK, strokeWidth: 1.8, roughness: 1.0 }));
+  replace('layer-props', props);
+
+  const floor = g();
+  floor.appendChild(rc.line(-160, floorY, 940, floorY, { stroke: INK, strokeWidth: 1.6, roughness: 0.8 }));
+  for (let i = -1; i < 8; i++) {
+    const x = i * 132 + 30;
+    floor.appendChild(rc.line(x, floorY, x - 30, floorY + 64, { stroke: 'rgba(43,43,43,0.45)', strokeWidth: 0.7, roughness: 1.3, bowing: 0.3 }));
+  }
+  replace('layer-floor', floor);
+  void GUITAR;
+}
+
+// The held guitar - a rough.js acoustic drawn once and parented to the figure
+// root (first child, so it travels + turns + tucks with the player and paints
+// behind both hands). Waisted figure-eight body, a neck to a small headstock, a
+// round sound hole, a few string lines - it must read as a guitar at this scale
+// and while moving (captain refinement).
+function buildGuitar(svg, hostEl) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const INK = '#2b2b2b';
+  const GUITAR = '#7d5f86';
+  const rc = rough.svg(svg);
+  const gg = document.createElementNS(NS, 'g');
+  gg.setAttribute('class', 'guitar-prop');
+  // Authored with the long axis roughly horizontal (neck to the left, body to
+  // the right at the strumming hand), then held up at ~25deg against the body.
+  gg.setAttribute('transform', 'translate(4,-12) rotate(24) scale(1.08)');
+
+  // waisted figure-eight body: smaller upper bout (left, at the neck joint),
+  // pinched waist, bigger lower bout (right, under the strumming hand).
+  gg.appendChild(rc.path(
+    'M -18 0 C -18 -10 -12 -16 -2 -15.5 C 3 -15 5 -10 7 -6 ' +
+    'C 10 -14 17 -17 24 -16 C 31 -15 32 -6 32 0 ' +
+    'C 32 6 31 15 24 16 C 17 17 10 14 7 6 ' +
+    'C 5 10 3 15 -2 15.5 C -12 16 -18 10 -18 0 Z',
+    { stroke: GUITAR, strokeWidth: 2, roughness: 1.0, bowing: 0.7, fill: 'rgba(125,95,134,0.10)', fillStyle: 'solid' }));
+  // round sound hole in the lower bout
+  gg.appendChild(rc.circle(15, 0, 13, { stroke: INK, strokeWidth: 1.2, roughness: 0.85, fill: 'none' }));
+  // bridge
+  gg.appendChild(rc.line(24, -5, 24, 5, { stroke: INK, strokeWidth: 2.6, roughness: 0.7 }));
+  // neck (slim, tapering) + nut + headstock, to the left
+  gg.appendChild(rc.path('M -18 -5 L -52 -3.4 L -52 3.4 L -18 5 Z',
+    { stroke: GUITAR, strokeWidth: 1.6, roughness: 0.8, bowing: 0.3, fill: 'rgba(125,95,134,0.06)', fillStyle: 'solid' }));
+  gg.appendChild(rc.line(-52, -3.6, -52, 3.6, { stroke: INK, strokeWidth: 1.4, roughness: 0.7 }));
+  gg.appendChild(rc.path('M -52 -4.4 L -66 -8 L -67 3 L -52 4.4 Z',
+    { stroke: GUITAR, strokeWidth: 1.6, roughness: 0.85, fill: 'rgba(125,95,134,0.09)', fillStyle: 'solid' }));
+  // tuning pegs
+  [-56, -61].forEach(x => {
+    gg.appendChild(rc.line(x, -8, x, -12, { stroke: INK, strokeWidth: 1.1, roughness: 0.8 }));
+    gg.appendChild(rc.line(x, 4, x, 8, { stroke: INK, strokeWidth: 1.1, roughness: 0.8 }));
+  });
+  // frets
+  [-26, -34, -42].forEach(x => {
+    gg.appendChild(rc.line(x, -4.4, x, 4.4, { stroke: INK, strokeWidth: 0.7, roughness: 0.8 }));
+  });
+  // strings: bridge -> over the sound hole -> down the neck to the nut
+  [-2.3, 0, 2.3].forEach(o => {
+    gg.appendChild(rc.line(24, o, -52, o * 0.65, {
+      stroke: 'rgba(43,43,43,0.5)', strokeWidth: 0.5, roughness: 0.5, bowing: 0.15,
+    }));
+  });
+
+  hostEl.insertBefore(gg, hostEl.firstChild);   // behind the arms so both hands read
+  return gg;
+}
+
+// One drifting music-note glyph (eighth note, or a beamed pair) - rough.js, in
+// the --guitar accent. Small; drawn once, positioned by a scroll-linked track.
+function buildGuitarNote(svg, kind) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const GUITAR = '#7d5f86';
+  const rc = rough.svg(svg);
+  const ng = document.createElementNS(NS, 'g');
+  ng.setAttribute('class', 'note');
+  const head = (x, y) => rc.ellipse(x, y, 7, 5.4, {
+    stroke: GUITAR, strokeWidth: 1, roughness: 0.8, fill: GUITAR, fillStyle: 'solid',
+  });
+  if (kind === 'pair') {
+    ng.appendChild(head(0, 1));
+    ng.appendChild(head(10, 0));
+    ng.appendChild(rc.line(3.2, 1, 3.2, -13, { stroke: GUITAR, strokeWidth: 1.1, roughness: 0.7 }));
+    ng.appendChild(rc.line(13.2, 0, 13.2, -14, { stroke: GUITAR, strokeWidth: 1.1, roughness: 0.7 }));
+    ng.appendChild(rc.line(2.7, -13, 13.7, -14, { stroke: GUITAR, strokeWidth: 2.2, roughness: 0.6 }));
+  } else {
+    ng.appendChild(head(0, 1));
+    ng.appendChild(rc.line(3.2, 1, 3.2, -14, { stroke: GUITAR, strokeWidth: 1.1, roughness: 0.7 }));
+    ng.appendChild(rc.path('M 3.2 -14 Q 9 -12 7 -6', { stroke: GUITAR, strokeWidth: 1.1, roughness: 0.7, fill: 'none' }));
+  }
+  return ng;
+}
+
 function setupGuitar() {
-  const section   = document.getElementById('sec-guitar');
-  const canvas    = section.querySelector('canvas.anim-canvas');
-  const stringsEl = section.querySelector('.guitar-strings');
+  const section = document.getElementById('sec-guitar');
+  const svg     = section.querySelector('.guitar-scene');
 
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width  = canvas.clientWidth  * dpr;
-  canvas.height = canvas.clientHeight * dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  const W = canvas.clientWidth;
-  const H = canvas.clientHeight;
+  buildGuitarScene(svg);
 
-  const rc = rough.canvas(canvas);
+  // dense procedural pose set -> the rig's stock hermiteSpline path
+  const poses = {}, times = {}, bobs = [];
+  for (let i = 0; i <= GUITAR_STEPS; i++) {
+    const t = i / GUITAR_STEPS;
+    const wp = guitarPoseAt(t);
+    bobs.push(wp._bob); delete wp._bob;
+    poses['k' + i] = SV.worldPose(wp);
+    times['k' + i] = t;
+  }
 
-  const bridgeW = W * 0.10;
-  rc.rectangle(W / 2 - bridgeW / 2, H * 0.925, bridgeW, H * 0.022, {
-    stroke: '#7d5f86', strokeWidth: 1.2, roughness: 1.4,
-    fill: 'rgba(125, 95, 134, 0.06)', fillStyle: 'solid',
+  const figure = SV.buildStickFigure(svg, {
+    anchor: GUITAR_ANCHOR,
+    lengths: GUITAR_LENGTHS,
+    legWidths: GUITAR_LEG_W,
+    armWidths: GUITAR_ARM_W,
+    poses,
+    times,
+    stroke: { roughness: 1.15, bowing: 0.6 },
+    rootClass: 'figure-root',
+    hands: true,
+    insertBefore: svg.querySelector('.layer-notes'),
   });
-  rc.rectangle(W * 0.01, H * 0.68, W * 0.005, H * 0.25, {
-    stroke: '#7d5f86', strokeWidth: 1.0, roughness: 1.3,
-    fill: 'rgba(125, 95, 134, 0.08)', fillStyle: 'solid',
-  });
-  [0.22, 0.42, 0.60].forEach(pct => {
-    rc.circle(W * pct, H * 0.815, 9, {
-      stroke: '#7d5f86', strokeWidth: 1.0, roughness: 1.0,
-      fill: 'rgba(125, 95, 134, 0.10)', fillStyle: 'solid',
-    });
-  });
+  buildGuitar(svg, figure.root);
 
-  const strings = [
-    { id: 'gstr-1', y: 30,  amp: 20, noteId: '#gnote-1' },
-    { id: 'gstr-2', y: 66,  amp: 26, noteId: '#gnote-2' },
-    { id: 'gstr-3', y: 102, amp: 32, noteId: '#gnote-3' },
-    { id: 'gstr-4', y: 138, amp: 24, noteId: null },
-    { id: 'gstr-5', y: 170, amp: 16, noteId: null },
+  // rotate / scale pivot about mid-torso; translate is origin-independent. Both
+  // the CSS-animation path and the rAF fallback read this.
+  const origin = `${GUITAR_ANCHOR.x}px ${GUITAR_ANCHOR.y - 16}px`;
+  figure.root.style.transformOrigin = origin;
+
+  // --- traverse + camera pan --------------------------------------------------
+  const cross = SV.hermiteSpline(GUITAR_CROSS_KNOTS);
+  const bobSpline = SV.hermiteSpline(bobs.map((v, k) => ({ t: k / GUITAR_STEPS, v })));
+  const S0 = GUITAR_PIVOT_AT - GUITAR_PIVOT_SPAN / 2;
+  const S1 = GUITAR_PIVOT_AT + GUITAR_PIVOT_SPAN / 2;
+  const hop = SV.hermiteSpline([
+    { t: S0, v: 0 }, { t: GUITAR_PIVOT_AT, v: -14 }, { t: S1, v: 0 }, { t: 1, v: 0 },
+  ]);
+  const turnLean = SV.hermiteSpline([
+    { t: S0, v: 0 }, { t: GUITAR_PIVOT_AT - 0.04, v: -8 },
+    { t: GUITAR_PIVOT_AT + 0.04, v: 8 }, { t: S1, v: 0 }, { t: 1, v: 0 },
+  ]);
+  // camera pans to partly follow: the whole scene shifts by -cam(p); the figure
+  // additionally carries its own cross(p), so it drifts across ~half the frame
+  // while the room streams past behind.
+  const cam = p => cross(p) * 0.46;
+  const scaleX = p => Math.cos(guitarPivotU(p) * 2 * Math.PI);   // 1 -> 0 -> -1 -> 0 -> 1
+
+  const translateFn = p =>
+    `${(cross(p) - cam(p)).toFixed(2)}px ${(hop(p) + bobSpline(p)).toFixed(2)}px`;
+  const rotateFn = p => `${turnLean(p).toFixed(2)}deg`;
+  const scaleFn  = p => `${scaleX(p).toFixed(3)} 1`;
+
+  const PARALLAX = [
+    ['.layer-wall',   0.35],
+    ['.layer-window', 0.62],
+    ['.layer-props',  0.90],
+    ['.layer-floor',  1.00],
   ];
+  const parallaxFn = mul => p => `${(-cam(p) * mul).toFixed(2)}px 0`;
 
-  const cooldowns = {};
-
-  function pluck(s) {
-    if (cooldowns[s.id]) return;
-    cooldowns[s.id] = true;
-
-    const el  = document.getElementById(s.id);
-    const { y, amp } = s;
-    const flat    = `M 0 ${y} C 333 ${y}             667 ${y}             1000 ${y}`;
-    const peak    = `M 0 ${y} C 333 ${y - amp}       667 ${y + amp}       1000 ${y}`;
-    const rebound = `M 0 ${y} C 333 ${y + amp * 0.4} 667 ${y - amp * 0.4} 1000 ${y}`;
-    const settle  = `M 0 ${y} C 333 ${y - amp * 0.1} 667 ${y + amp * 0.1} 1000 ${y}`;
-
-    const tl = gsap.timeline();
-    tl.to(el, { attr: { d: peak    }, ease: 'power3.out',   duration: 0.08 });
-    tl.to(el, { attr: { d: rebound }, ease: 'power3.inOut', duration: 0.12 });
-    tl.to(el, { attr: { d: settle  }, ease: 'power3.inOut', duration: 0.10 });
-    tl.to(el, { attr: { d: flat    }, ease: 'power3.in',    duration: 0.14 });
-
-    if (s.noteId) {
-      gsap.fromTo(s.noteId,
-        { opacity: 0, y: 0 },
-        { opacity: 0.65, y: -80, ease: 'power1.out', duration: 0.5 },
-      );
-      gsap.to(s.noteId, { opacity: 0, duration: 0.25, delay: 0.35 });
-    }
-
-    setTimeout(() => { cooldowns[s.id] = false; }, 350);
-  }
-
-  let lastSvgY = null;
-  let hinted   = false;
-
-  function onCursorY(svgY) {
-    if (lastSvgY === null) { lastSvgY = svgY; return; }
-    strings.forEach(s => {
-      if ((lastSvgY < s.y && svgY >= s.y) || (lastSvgY > s.y && svgY <= s.y)) {
-        pluck(s);
-        if (!hinted) {
-          hinted = true;
-          section.querySelector('.section__hint')?.classList.add('is-hidden');
-        }
-      }
-    });
-    lastSvgY = svgY;
-  }
-
-  stringsEl.addEventListener('mousemove', e => {
-    const rect = stringsEl.getBoundingClientRect();
-    onCursorY(((e.clientY - rect.top) / rect.height) * 200);
+  // --- drifting music notes: sparse, calm, scroll-linked (gone when parked) ----
+  // A handful across the traverse, at most a couple visible at once, none during
+  // the dance-turn window. Each note fades in / drifts up + outward / fades out
+  // within its own scroll sub-range.
+  const NOTES = [
+    { kind: 'pair',   c0: 0.14, c1: 0.28, dx: 4,  rise: 34 },
+    { kind: 'eighth', c0: 0.30, c1: 0.42, dx: 10, rise: 40 },
+    { kind: 'eighth', c0: 0.60, c1: 0.72, dx: 6,  rise: 36 },
+    { kind: 'pair',   c0: 0.76, c1: 0.90, dx: 12, rise: 42 },
+  ];
+  // .layer-notes paints after the figure (inserted above) so notes read over the
+  // guitar, not hidden behind it
+  const noteLayer = svg.querySelector('.layer-notes');
+  const noteEls = NOTES.map(n => {
+    const el = buildGuitarNote(svg, n.kind);
+    noteLayer.appendChild(el);
+    return el;
   });
-  stringsEl.addEventListener('mouseleave', () => { lastSvgY = null; });
+  const noteU = (n, p) => Math.max(0, Math.min(1, (p - n.c0) / (n.c1 - n.c0)));
+  const noteTranslateFn = n => p => {
+    const u = noteU(n, p);
+    // leave the sound hole, drift up and outward (the direction the player moves)
+    const x = GUITAR_ANCHOR.x + (cross(p) - cam(p)) + 20 + u * (18 + n.dx);
+    const y = GUITAR_ANCHOR.y + hop(p) - 6 - u * n.rise;
+    return `${x.toFixed(1)}px ${y.toFixed(1)}px`;
+  };
+  const noteOpacityFn = n => p => {
+    if (p <= n.c0 || p >= n.c1) return '0';
+    const span = n.c1 - n.c0;
+    const inT = n.c0 + span * 0.28, outT = n.c1 - span * 0.30;
+    if (p < inT)  return (0.5 * (p - n.c0) / (inT - n.c0)).toFixed(3);
+    if (p > outT) return (0.42 * (1 - (p - outT) / (n.c1 - outT))).toFixed(3);
+    return '0.42';
+  };
 
-  stringsEl.addEventListener('touchmove', e => {
-    e.preventDefault();
-    const rect  = stringsEl.getBoundingClientRect();
-    const touch = e.touches[0];
-    onCursorY(((touch.clientY - rect.top) / rect.height) * 200);
-  }, { passive: false });
-  stringsEl.addEventListener('touchend', () => { lastSvgY = null; });
+  // ---- reduced motion: one static "standing and playing" frame ---------------
+  if (REDUCED) {
+    const rp = SV.worldPose(GUITAR_REST);
+    figure.joints.forEach(k => {
+      if (rp[k] != null) figure.jointEls[k].style.rotate = rp[k].toFixed(3) + 'deg';
+    });
+    figure.root.style.translate = '0px 0px';
+    figure.root.style.rotate = '0deg';
+    figure.root.style.scale = '1 1';
+    // a couple of calm static notes drifting off the sound hole
+    noteEls.forEach((el, i) => {
+      if (i > 1) { el.remove(); return; }
+      el.style.opacity = '0.32';
+      el.style.translate = `${GUITAR_ANCHOR.x + 20 + i * 15}px ${GUITAR_ANCHOR.y - 14 - i * 18}px`;
+    });
+    svg.dataset.driver = 'reduced';
+    return;
+  }
+
+  const tracks = [
+    { selector: '.figure-root', property: 'translate', spline: translateFn, from: 0, to: 1, steps: 64 },
+    { selector: '.figure-root', property: 'rotate',    spline: rotateFn,    from: 0, to: 1, steps: 72 },
+    { selector: '.figure-root', property: 'scale',     spline: scaleFn,     from: 0, to: 1, steps: 72 },
+  ];
+  PARALLAX.forEach(([sel, mul]) => {
+    tracks.push({ selector: sel, property: 'translate', spline: parallaxFn(mul), from: 0, to: 1, steps: 48 });
+  });
+  NOTES.forEach((n, i) => {
+    const cls = `.note:nth-of-type(${i + 1})`;
+    tracks.push({ selector: cls, property: 'opacity', spline: noteOpacityFn(n), from: 0, to: 1, steps: 44 });
+    tracks.push({ selector: cls, property: 'translate', spline: noteTranslateFn(n), from: 0, to: 1, steps: 44 });
+  });
+
+  const style = document.createElement('style');
+  style.id = 'guitar-scrub-keyframes';
+  style.textContent = SV.buildScrubStylesheet({
+    ns: 'guitar',
+    timeline: '--guitar-tl',
+    scene: '.guitar-scene',
+    figure: { jointSplines: figure.jointSplines, idlePose: figure.idlePose, endT: 1, joints: figure.joints },
+    tracks,
+  });
+  document.head.appendChild(style);
+
+  svg.dataset.driver = SV.supportsScrollDrivenAnimation() ? 'native' : 'fallback';
+  if (svg.dataset.driver === 'fallback') {
+    const channels = [
+      SV.figureJointsChannel(figure.jointEls, figure.jointSplines, 1, figure.joints),
+      SV.translateChannel(figure.root, translateFn),
+      SV.styleChannel(figure.root, 'rotate', rotateFn),
+      SV.styleChannel(figure.root, 'scale', scaleFn),
+    ];
+    PARALLAX.forEach(([sel, mul]) => {
+      channels.push(SV.translateChannel(svg.querySelector(sel), parallaxFn(mul)));
+    });
+    NOTES.forEach((n, i) => {
+      channels.push(SV.styleChannel(noteEls[i], 'opacity', noteOpacityFn(n)));
+      channels.push(SV.translateChannel(noteEls[i], noteTranslateFn(n)));
+    });
+    SV.pinnedScrubFallback({ section, channels });
+  }
 }
 
 function setupSectionReveal() {
