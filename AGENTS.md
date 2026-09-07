@@ -32,51 +32,63 @@ Matter.js was removed (soccer's click-to-shoot minigame it existed for was repla
 decorative scroll-scrub accent); don't reintroduce a physics engine without a real
 collision-response need. MotionPathPlugin was removed when soccer's ball moved to CSS
 `offset-path`; nothing else used it. Libraries in play, each with a fixed job:
-- **Native CSS / compositor-driven keyframe animation**: both decorative scroll-scrub
-  sections (soccer, basketball) and the hero's looping idle wave. `@keyframes` are
+- **Native CSS / compositor-driven keyframe animation**: all three decorative scroll-scrub
+  sections (soccer, basketball, guitar) and the hero's looping idle wave. `@keyframes` are
   generated in JS in `scrub-vignette.js` from `hermiteSpline` + pose data and bound
   either to a `view-timeline` (the scrub sections, via `ScrubVignette.buildScrubStylesheet()`
-  - ball `offset-path`/`offset-distance`, trail, parallax, jump translate, joint rotations,
-  gated on `releaseT`) or to a wall clock with `animation: … linear infinite` (the hero,
-  via `ScrubVignette.buildLoopStylesheet()`). Both paths keep motion off the main thread.
-  This is the go-forward pattern for decorative-accent sections (guitar when/if it gets there).
+  - ball `offset-path`/`offset-distance`, trail, parallax, jump/traverse translate, turn
+  rotate + scale, joint rotations, gated on `releaseT`) or to a wall clock with
+  `animation: … linear infinite` (the hero, via `ScrubVignette.buildLoopStylesheet()`).
+  Both paths keep motion off the main thread. This is the settled pattern for
+  decorative-accent sections - all three hobby sections now use it.
 - **GSAP + ScrollTrigger**: hero entrance, section scroll-reveals, nav dot, and each
   scrub section's one-shot contact accents (`netPulse`/`netSway`, fired by a scrub-free
   ScrollTrigger progress watcher). NOT the scrub itself.
 - **anime.js v4** (UMD global `anime.animate`/`anime.stagger`/`anime.utils`/`anime.remove`,
   not v3's single `anime()` call or v4's ESM named exports): sprite-level tweens that must
   land at an exact deterministic target, e.g. the contact-moment ink flourish
-  (`impactFlourish()` in `main.js`, used by both scrub sections).
+  (`impactFlourish()` in `main.js`, used by soccer + basketball).
 
-## `scrub-vignette.js` + thin per-section `setup*` (three figures, one rig)
+## `scrub-vignette.js` + thin per-section `setup*` (four figures, one rig)
 
-`#sec-soccer` (a figure kicks into the goal) and `#sec-basket` (a figure rises for a jump
-shot) are pinned (`.section--pinned`, CSS `position: sticky`), non-interactive scroll-scrub
-accents - not the click/hover minigames PR #1 shipped. The **hero** figure
-(`.hero__figure`, `setupHero` in `main.js`) is the same stick-figure rig again, front-facing
-and driven by a scroll-free looping wave (see below). Guitar is still the hover-pluck
-minigame and reuses only the low-level helpers if it ever becomes scroll-linked.
+`#sec-soccer` (a figure kicks into the goal), `#sec-basket` (a figure rises for a jump
+shot) and `#sec-guitar` (a guitarist crosses the frame and turns once) are pinned
+(`.section--pinned`, CSS `position: sticky`), non-interactive scroll-scrub accents - not
+the click/hover minigames PR #1 shipped. The **hero** figure (`.hero__figure`, `setupHero`
+in `main.js`) is the same stick-figure rig again, front-facing and driven by a scroll-free
+looping wave (see below).
 
 The section-agnostic machinery lives once in **`scrub-vignette.js`** (plain IIFE, one
 global `window.ScrubVignette`, loaded before `main.js`): `hermiteSpline`, `easeOutOfRest`,
 `easeLaunch` (leave-at-speed-then-coast, the projectile counterpart), `worldPose`/
 `FIGURE_JOINTS`, `buildStickFigure` (the humanoid pivot chain + a `fk(t)` forward-kinematics
-readout, shared by all three figures), `buildScrubStylesheet` (pose/path data -> `@keyframes`
+readout, shared by all four figures), `buildScrubStylesheet` (pose/path data -> `@keyframes`
 bound to a `view-timeline`), `buildLoopStylesheet` (the same pose splines -> `@keyframes`
 played `linear infinite`, no scroll - the hero idle path), `pinnedScrubFallback` + channel
 factories (the JS rAF 1:1 driver for the scrub sections), `svgTransformDriver`/
 `svgRotationDriver`, `supportsScrollDrivenAnimation`. `setupSoccer` / `setupBasket` /
-`setupHero` in `main.js` are thin: draw/emit a scene, define poses (+ a projectile path for
-the scrub sections), call the helpers. A new section plugs in the same way - do not re-inline
-or fork this code.
+`setupGuitar` / `setupHero` in `main.js` are thin: draw/emit a scene, define poses (+ a
+projectile path / a traverse+turn for the scrub sections), call the helpers. A new section
+plugs in the same way - do not re-inline or fork this code.
+
+**Multi-track per selector:** `buildScrubStylesheet`'s generic `tracks` are collected BY
+SELECTOR and emitted as one rule with a comma-joined `animation` / `animation-timeline` /
+`animation-range` list. One track per selector (soccer, basketball) emits exactly the
+old single-track rule, so their generated stylesheet stays byte-identical - always
+diff-check that when you touch this code. Guitar relies on it: `.figure-root` carries
+`translate` (traverse) + `rotate` (turn lean) + `scale` (the 2-D pivot) as three
+independent-property tracks on the one element, no wrapper `<g>`s (`transform-origin` set
+once to mid-torso covers the rotate/scale; `translate` is origin-independent). The
+fallback stacks `translateChannel` + two `styleChannel`s on the same element to match.
 
 `buildStickFigure` is 11 pivots by default; opt-in flags generalise it without touching the
-two scrub figures (soccer/basket pass none, so their generated `<style>` + scene SVG are
-byte-identical - diff both old vs new when you touch the rig): `hands:true` adds a wrist
-segment per arm (`arm1_h`/`arm2_h`), `face:true` draws two eyes + a smile counter-rotated to
-read head-on, `armsOverHead:true` paints the arms above the head. It returns its own ordered
-`joints` list - pass `figure.joints` to `buildScrubStylesheet`/`buildLoopStylesheet`/
-`figureJointsChannel` so they drive the right set.
+two projectile figures (soccer/basket pass none, so their generated `<style>` + scene SVG
+are byte-identical - diff both old vs new when you touch the rig): `hands:true` adds a wrist
+segment per arm (`arm1_h`/`arm2_h`; soccer/basket omit it, guitar + hero use it),
+`face:true` draws two eyes + a smile counter-rotated to read head-on, `armsOverHead:true`
+paints the arms above the head. It returns its own ordered `joints` list - pass
+`figure.joints` to `buildScrubStylesheet`/`buildLoopStylesheet`/`figureJointsChannel` so
+they drive the right set.
 
 The hero (`setupHero`, `HERO_POSES`/`HERO_T`) is that rig **front-facing**: `hands` + `face`
 + `armsOverHead`, torso pinned near vertical, a symmetric stance, and a raised arm doing a
@@ -89,9 +101,24 @@ freezes one static mid-wave "hand up" pose (`HERO_T.waveA`). The hero dropped it
 `#r-hero` `feTurbulence` filter and one-hinge SMIL `<animateTransform>`; like the other two
 its hand-drawn look is a single static rough.js pass.
 
+The guitar (`setupGuitar`, `GUITAR_*` consts + `guitarPoseAt`) is that rig **in profile**:
+`hands`, no `face`. It is a *procedural* cycle, not hand-keyed poses - `guitarPoseAt(p)`
+composes a walk (leg swing / knee-lift), a strum oscillation on the front arm, a fret hand
+along the neck, and a mid-beat "hug the guitar" turn-tuck, all in WORLD degrees, sampled
+into a dense (`GUITAR_STEPS`) pose set the stock `buildStickFigure` path consumes. The
+held guitar is a rough.js acoustic (`buildGuitar`, waisted figure-eight body + sound hole
++ neck/headstock/frets/strings, `--guitar` accent) inserted as first child of `figure.root`
+so it travels / turns / tucks with the player and paints behind both hands. Sparse
+scroll-linked music-note glyphs (`buildGuitarNote`, eighth notes / beamed pairs) fade in
+and drift off the sound hole within scroll sub-ranges (`NOTES[]`) - never a wall clock,
+none during the turn window. Reduced motion freezes a centre-frame "standing and playing"
+pose (`GUITAR_REST`) + two static notes, no scrub stylesheet, `driver='reduced'` -
+basketball's pattern.
+
 Sharp edges:
-- Each pinned section declares its own `view-timeline-name` (`--soccer-tl` / `--basket-tl`)
-  in `style.css`; `.section--pinned` only carries the shared `view-timeline-axis`. The
+- Each pinned section declares its own `view-timeline-name` (`--soccer-tl` / `--basket-tl` /
+  `--guitar-tl`) in `style.css`; `.section--pinned` only carries the shared
+  `view-timeline-axis`. The
   timeline's `contain` range is *exactly* the CSS-sticky pin window, so pin geometry still
   matters. The single `.section__pin` wrapper (child of `.section--pinned`, parent of
   `.section__anim`/`.section__content`) carries `position: sticky` so the two overlay.
@@ -100,6 +127,11 @@ Sharp edges:
   `visible` (`.section--pinned` overrides the base `.section`'s `overflow: hidden`); a
   `view-timeline` NAME lookup is *not* broken by ancestor overflow, so `.section__anim`'s
   `overflow: hidden` is fine. Don't reintroduce `overflow: hidden` on `.section--pinned`.
+- Guitar's dance-turn is `GUITAR_PIVOT_AT` / `GUITAR_PIVOT_SPAN`: `scale` X = `cos(pivotU·2π)`
+  (through 0 twice = a 360), `rotate` = a ±8° lean spline, `hop` lifts the feet, and
+  `guitarPoseAt`'s tuck window pulls the limbs in over the same span. Retiming those two
+  consts carries all of it. The turn is a 2-D pivot, deliberately *not* a literal figure
+  rotation (that reads as a cartwheel - see the scout report) - keep it that way.
 - **The projectile's flight must never start before the figure's release pose resolves** -
   a captain-review-caught regression class. `SOCCER_RELEASE_T` = `SOCCER_T.contact`.
   `BASKET_RELEASE_T` is `0.26`, deliberately a touch *before* the `apex` pose (0.30) so the
@@ -149,18 +181,21 @@ of the timeline behind scroll and keeps animating 150-350ms after input stops (t
 input (the "stop-motion" look). This was the root cause of soccer's laggy-scroll /
 jumpy-ball reports through PRs #1-2 and three follow-up rounds - none of which touched the
 `scrub` mechanism. **For a decorative scrub, never use a raw numeric `scrub`.** Prefer
-native CSS scroll-driven animation (what soccer now does), else `scrub: true` (strict
-1:1), else a *capped* rAF lerp if a deliberate glide-to-stop is wanted.
+native CSS scroll-driven animation (what all three hobby sections do), else `scrub: true`
+(strict 1:1), else a *capped* rAF lerp if a deliberate glide-to-stop is wanted.
 
-### Both scrub sections use native CSS scroll-driven animation (the go-forward pattern)
+### All three scrub sections use native CSS scroll-driven animation (the go-forward pattern)
 
 Per-section `view-timeline` + JS-generated `@keyframes` bound to it
 (`ScrubVignette.buildScrubStylesheet()` in `scrub-vignette.js`); the compositor advances
 motion 1:1 with scroll, structurally immune to scrub lag. `ScrubVignette.pinnedScrubFallback`
 is the tested JS rAF 1:1 driver for engines without support. Ball = `offset-path`/
 `offset-distance` (+ a `.ball-carry` translate wrapper for basketball's hold); figure
-joints = generated `rotate` keyframes; parallax / jump = `translate` keyframes. Extend this
-module to guitar rather than reviving any bespoke inline scrub helper.
+joints = generated `rotate` keyframes; parallax / jump / traverse = `translate` keyframes;
+guitar's turn = `rotate` + `scale` keyframes on `.figure-root` itself. Any new decorative
+scroll section plugs into this module - do not revive a bespoke inline scrub helper.
+Verified in the sandbox: traverse-only per-frame accel p90 ~2.5-3px native / fallback,
+0 dropped frames, native and forced-JS-fallback within 1px of each other.
 
 ### `hermiteSpline(knots)` (in `scrub-vignette.js`) - keep using it for multi-pose scrub values
 
@@ -182,15 +217,15 @@ GSAP always writes SVG `<g>`/`<path>` transforms via the `transform` *attribute*
 invalidation on every write - a real per-frame cost across a scroll range.
 `ScrubVignette.svgTransformDriver(el)` / `svgRotationDriver(el, deg)` tween a proxy object
 and apply via the CSS `transform` *style* instead; used by the one-shot `netPulse`/
-`netSway`, kept available for guitar. The CSS scroll-driven happy path and the fallback
-channels sidestep this entirely (CSS `rotate`/`translate`/`transform` *style*, never the
-attribute). Also: don't animate `stroke-dashoffset` on a *filtered* path, and
-never run a rough.js regen (`settleRedraw` was removed) while a scroll may be active - it
-fired mid-arc as a synchronous main-thread task. Every animated `feTurbulence`/
-`feDisplacementMap` wobble filter has been removed (the scrub scenes' three, then the
-hero's `#r-hero`) - real per-frame GPU re-raster on the captain's hardware; the hand-drawn
-look on all three figures is now a static rough.js pass drawn once. (The still
-`project-card__border` filters remain - they never animate.)
+`netSway`. The CSS scroll-driven happy path and the fallback channels sidestep this
+entirely (CSS `rotate`/`translate`/`scale`/`transform` *style*, never the attribute).
+Also: don't animate `stroke-dashoffset` on a *filtered* path, and never run a rough.js
+regen (`settleRedraw` was removed) while a scroll may be active - it fired mid-arc as a
+synchronous main-thread task. Every animated `feTurbulence`/`feDisplacementMap` wobble
+filter has been removed (the scrub scenes', then the hero's `#r-hero`) - real per-frame
+GPU re-raster on the captain's hardware; the hand-drawn look on all four figures (and the
+held guitar) is a static rough.js pass drawn once. (The still `project-card__border`
+filters remain - they never animate.)
 
 ### This sandbox cannot validate GPU/compositing cost
 

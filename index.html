@@ -119,23 +119,19 @@
    </div>
   </section>
 
-  <section id="sec-guitar" class="section" aria-label="Guitar">
+  <section id="sec-guitar" class="section section--pinned" aria-label="Guitar">
+   <div class="section__pin">
     <div class="section__anim" aria-hidden="true">
-      <canvas class="anim-canvas"></canvas>
-      <!-- Strings: preserveAspectRatio="none" so paths span full width.
-           All paths use M C syntax — command count must stay identical for GSAP d-interpolation. -->
-      <svg class="guitar-strings" viewBox="0 0 1000 200" preserveAspectRatio="none" aria-hidden="true">
-        <path id="gstr-1" d="M 0 30  C 333 30  667 30  1000 30"  stroke="#7d5f86" stroke-width="1.8" fill="none" opacity="0.45"/>
-        <path id="gstr-2" d="M 0 66  C 333 66  667 66  1000 66"  stroke="#7d5f86" stroke-width="1.6" fill="none" opacity="0.38"/>
-        <path id="gstr-3" d="M 0 102 C 333 102 667 102 1000 102" stroke="#7d5f86" stroke-width="1.4" fill="none" opacity="0.32"/>
-        <path id="gstr-4" d="M 0 138 C 333 138 667 138 1000 138" stroke="#7d5f86" stroke-width="1.2" fill="none" opacity="0.27"/>
-        <path id="gstr-5" d="M 0 170 C 333 170 667 170 1000 170" stroke="#7d5f86" stroke-width="1.0" fill="none" opacity="0.22"/>
-      </svg>
-      <!-- Notes: separate SVG without preserveAspectRatio="none" so circles stay round -->
-      <svg class="guitar-notes" viewBox="0 0 120 200" aria-hidden="true">
-        <circle id="gnote-1" cx="44" cy="195" r="5.5" fill="#7d5f86" opacity="0"/>
-        <circle id="gnote-2" cx="64" cy="195" r="4.0" fill="#7d5f86" opacity="0"/>
-        <circle id="gnote-3" cx="80" cy="195" r="3.0" fill="#7d5f86" opacity="0"/>
+      <!-- Decorative scroll-scrub (a guitarist crosses the frame and turns once),
+           built on the same static-rough.js + native-CSS-scroll-driven system as
+           soccer and basketball - see setupGuitar() in main.js and AGENTS.md. No
+           live SVG wobble filters, no mid-scroll redraw, no wall-clock loop. -->
+      <svg class="guitar-scene" viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice">
+        <g class="layer-wall"></g>
+        <g class="layer-window"></g>
+        <g class="layer-props"></g>
+        <g class="layer-floor"></g>
+        <g class="layer-notes"></g>
       </svg>
     </div>
     <div class="section__content">
@@ -145,7 +141,7 @@
       </div>
       <p class="section__caption">[ what you play when no one's around ]</p>
     </div>
-    <p class="section__hint" aria-hidden="true">move cursor over strings</p>
+   </div>
   </section>
 
   <section class="projects" aria-label="Selected work">
