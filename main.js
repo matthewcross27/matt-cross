@@ -808,7 +808,6 @@ function buildGuitarScene(svg) {
   const rc = rough.svg(svg);
   const NS = 'http://www.w3.org/2000/svg';
   const INK = '#2b2b2b';
-  const GUITAR = '#7d5f86';
   const floorY = GUITAR_FLOOR_Y;
   const g = () => document.createElementNS(NS, 'g');
 
@@ -850,7 +849,6 @@ function buildGuitarScene(svg) {
     floor.appendChild(rc.line(x, floorY, x - 30, floorY + 64, { stroke: 'rgba(43,43,43,0.45)', strokeWidth: 0.7, roughness: 1.3, bowing: 0.3 }));
   }
   replace('layer-floor', floor);
-  void GUITAR;
 }
 
 // The held guitar - a rough.js acoustic drawn once and parented to the figure
