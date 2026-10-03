@@ -20,25 +20,22 @@
   var MARKS = {
     land: {
       W: 400, H: 300, ring: [0.215, 0.665], ringR: [0.05, 0.085],
-      tenArrow: [[0.17, 0.83], [0.2, 0.79], [0.215, 0.755]],
       skyArrow: [[0.52, 0.42], [0.56, 0.45], [0.57, 0.52]],
-      sky: [0.33, 0.2], ten: [0.06, 0.83]
+      sky: [0.33, 0.2]
     },
     port: {
       W: 400, H: 500, ring: [0.2525, 0.665], ringR: [0.072, 0.052],
-      tenArrow: [[0.2, 0.86], [0.22, 0.81], [0.25, 0.73]],
       skyArrow: [[0.62, 0.41], [0.66, 0.46], [0.64, 0.55]],
-      sky: [0.4, 0.27], ten: [0.05, 0.87]
+      sky: [0.4, 0.27]
     }
   };
 
   function layoutMarks() {
     var m = narrow.matches ? MARKS.port : MARKS.land, photo = $('.hero .print__photo');
     if (!photo) return;
-    var svg = $('.print__marks', photo), sky = $('.note--sky', photo), ten = $('.note--ten', photo);
+    var svg = $('.print__marks', photo), sky = $('.note--sky', photo);
     D.printMarks(svg, m.W, m.H, m);
     sky.style.left = m.sky[0] * 100 + '%'; sky.style.top = m.sky[1] * 100 + '%';
-    ten.style.left = m.ten[0] * 100 + '%'; ten.style.top = m.ten[1] * 100 + '%';
   }
 
   function setupHero() {
@@ -117,7 +114,7 @@
         }
       });
     }, { rootMargin: '-45% 0px -50% 0px' });
-    ['now', 'work', 'play', 'about', 'contact'].forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+    ['now', 'work', 'about', 'contact'].forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
     var hero = $('#top');
     new IntersectionObserver(function (es) {
       if (es[0].isIntersecting) for (var k in links) links[k].removeAttribute('aria-current');

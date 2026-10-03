@@ -170,6 +170,7 @@ a { color: inherit; }
 @keyframes drop { from { opacity: 0; translate: 0 -28px; rotate: -1.4deg; scale: 1.04; } }
 .print__sheet { position: relative; background: var(--paper-hi); padding: clamp(8px, 1.1vw, 14px) clamp(8px, 1.1vw, 14px) 0; border-radius: 3px; box-shadow: 0 1px 0 rgba(255,255,255,0.8) inset, 0 1px 2px rgba(38, 39, 43, 0.18), 0 22px 36px -16px rgba(27, 45, 82, 0.5); transition: transform var(--t-med) var(--ease-out), box-shadow var(--t-med) var(--ease-out); }
 @media (hover: hover) { .print:hover .print__sheet { transform: rotate(-1.6deg) translateY(-5px); box-shadow: 0 1px 2px rgba(38, 39, 43, 0.18), 0 30px 40px -18px rgba(27, 45, 82, 0.55); } }
+.print > .print__sheet { padding-bottom: clamp(10px, 1.4vw, 18px); }
 .print__photo { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: #16263f; box-shadow: inset 0 0 0 1px rgba(38, 39, 43, 0.12); }
 .print__photo img { width: 100%; height: 100%; object-fit: cover; object-position: 30% 50%; }
 .print__caption { font-family: var(--hand); font-size: clamp(1.45rem, 2.1vw, 2rem); line-height: 1; color: var(--ink-2); padding: 10px 6px 12px; rotate: -1deg; }
@@ -179,7 +180,6 @@ a { color: inherit; }
 .print__marks path.dr { animation: draw 0.8s var(--ease-out) calc(1.05s + var(--i, 0) * 450ms) backwards; }
 .note { position: absolute; font-family: var(--hand); font-size: clamp(1.35rem, 2.7vw, 2.1rem); line-height: 0.92; width: max-content; max-width: 36%; pointer-events: none; animation: hand-in 0.8s var(--ease-out) 1s backwards; }
 .note--sky { color: var(--blue-ink); rotate: -4deg; max-width: 27%; }
-.note--ten { color: var(--paper-hi); rotate: -3deg; animation-delay: 1.25s; }
 
 html:not(.js) .note { display: none; }
 .tape { position: absolute; z-index: 2; width: clamp(62px, 8vw, 96px); height: clamp(20px, 2.4vw, 28px); background: rgba(255, 242, 190, 0.62); box-shadow: 0 1px 2px rgba(38, 39, 43, 0.14); clip-path: polygon(0 8%, 4% 0, 8% 10%, 12% 0, 100% 0, 96% 50%, 100% 100%, 92% 92%, 88% 100%, 0 100%, 3% 50%); }
@@ -239,19 +239,21 @@ html:not(.js) .note { display: none; }
 .project__facts dt { color: var(--pencil); }
 .project__body .link { justify-self: start; margin-top: 8px; font-size: 1.1rem; }
 
-.stubs { margin-top: clamp(48px, 9vh, 96px); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 2.4vw, 32px); }
-.project--stub { display: grid; align-content: start; gap: 10px; padding: 18px 18px 22px; border: 1.5px dashed rgba(98, 100, 108, 0.55); border-radius: 16px; background: rgba(251, 248, 239, 0.45); transition: translate var(--t-med) var(--ease-out), background-color var(--t-med) var(--ease-out); }
+.project--stub { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: clamp(20px, 4vw, 56px); padding: clamp(18px, 2.4vw, 30px); border: 1.5px dashed rgba(98, 100, 108, 0.55); border-radius: 18px; background: rgba(251, 248, 239, 0.45); transition: translate var(--t-med) var(--ease-out), background-color var(--t-med) var(--ease-out); }
+.project--stub.project--flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.project--stub.project--flip .project__visual { order: 2; }
 @media (hover: hover) { .project--stub:hover { translate: 0 -4px; background: rgba(251, 248, 239, 0.8); } }
-.project--stub .blank { aspect-ratio: 200 / 130; display: grid; place-items: center; border-radius: 8px; background: repeating-linear-gradient(135deg, transparent 0 9px, rgba(38, 39, 43, 0.04) 9px 10px); margin-bottom: 6px; }
+.project--stub .project__story { display: grid; align-content: center; gap: 10px; }
+.project--stub .blank { aspect-ratio: 200 / 130; display: grid; place-items: center; border-radius: 10px; background: repeating-linear-gradient(135deg, transparent 0 9px, rgba(38, 39, 43, 0.04) 9px 10px); }
 .project--stub .doodle--blank { width: 100%; height: auto; }
 .project--stub .doodle--blank path { stroke-dasharray: 5 6; }
-.project--stub .project__title { font-size: clamp(1.7rem, 2.4vw, 2.2rem); margin-top: 6px; }
-.project--stub .project__one, .project--stub .project__why { font-size: 1.02rem; line-height: 1.45; }
+.project--stub .project__title { font-size: clamp(2rem, 3.4vw, 3rem); margin-top: 4px; }
+.project--stub .project__one, .project--stub .project__why { font-size: 1.08rem; line-height: 1.45; }
+.work__draft { margin-top: clamp(40px, 7vh, 80px); }
 
-/* ============================================================ PLAY */
-.play { padding-bottom: clamp(40px, 8vh, 96px); }
-.sport { margin-top: clamp(56px, 11vh, 128px); }
-.sport__stage { width: min(100%, 1240px); margin-inline: auto; -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
+/* ============================================================ SCENES BETWEEN PROJECTS */
+.sport { margin-block: clamp(56px, 11vh, 120px); }
+.sport__stage { width: 100%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
 .scene { display: block; width: 100%; height: auto; overflow: visible; }
 .sport__copy { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-areas: 'lab txt' 'ttl txt'; column-gap: clamp(20px, 4vw, 64px); row-gap: 10px; align-items: start; margin-top: clamp(8px, 2vh, 24px); }
 .sport__copy > .mono { grid-area: lab; }
@@ -259,7 +261,6 @@ html:not(.js) .note { display: none; }
 .sport__text { grid-area: txt; display: grid; gap: 14px; max-width: 34em; padding-top: 4px; color: var(--ink-2); }
 .sport--flip .sport__copy { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); grid-template-areas: 'txt lab' 'txt ttl'; }
 .sport--flip .sport__text { justify-self: end; }
-.play__draft { margin-top: clamp(40px, 7vh, 80px); }
 
 /* ============================================================ ABOUT */
 .about__body { grid-column: 4 / 9; display: grid; gap: 18px; align-content: start; }
@@ -293,7 +294,8 @@ html:not(.js) .note { display: none; }
 @media (max-width: 1000px) {
   .project--feature { grid-template-columns: minmax(0, 1fr); }
   .project--feature .project__visual { position: relative; top: 0; }
-  .stubs { grid-template-columns: minmax(0, 1fr); max-width: 560px; }
+  .project--stub, .project--stub.project--flip { grid-template-columns: minmax(0, 1fr); }
+  .project--stub.project--flip .project__visual { order: 0; }
   .about__body { grid-column: 4 / 13; }
   .about__print { grid-column: 4 / 13; justify-self: start; margin-top: 28px; }
   .now__body { grid-column: 4 / 13; }

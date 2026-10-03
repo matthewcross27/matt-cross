@@ -30,7 +30,6 @@
   <nav class="bar__nav" aria-label="Primary">
     <a href="#now" data-spy="now">Now</a>
     <a href="#work" data-spy="work">Work</a>
-    <a href="#play" data-spy="play">Play</a>
     <a href="#about" data-spy="about">About</a>
     <a href="#contact" class="bar__cta" data-spy="contact">Say hello</a>
   </nav>
@@ -74,9 +73,7 @@
             </picture>
             <svg class="print__marks" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg>
             <span class="note note--sky" aria-hidden="true">a lot of systems down there</span>
-            <span class="note note--ten" aria-hidden="true">soccer, always</span>
           </div>
-          <figcaption class="print__caption">window seat, mid-thought</figcaption>
         </div>
       </figure>
     </div>
@@ -112,13 +109,15 @@
       <header class="section__head">
         <p class="mono reveal">02 <span aria-hidden="true">/</span> ongoing work</p>
         <h2 class="display reveal" id="work-title" style="--d:1">Things I'm building,<br><em>and chasing.</em></h2>
-        <p class="section__intro reveal" style="--d:2">Each one is a short story: what it is, why it matters, where it stands today. New pages get added here as they happen.</p>
+        <p class="section__intro reveal" style="--d:2">Each one is a short story: what it is, why it matters, where it stands today. In between, a few things I do off the clock, because they keep teaching me how to work.</p>
       </header>
 
       <!--
         ADDING A PROJECT
-        1. Duplicate one <article class="project project--stub"> block below (a compact card), or the full
-           <article class="project project--feature"> block (a story with a visual).
+        1. Duplicate one <article class="project project--stub"> block below (a compact row), or the full
+           <article class="project project--feature"> block (a story with a visual). Add project--flip to swap
+           the visual to the right. The soccer / basketball / guitar scenes (<article class="sport">) sit between
+           projects as transitions - add one between new neighbours, or leave a gap.
         2. Fill in the text. Replace the doodle placeholder with <img src="assets/..." alt="..."> when a real
            screenshot exists (keep the .project__visual wrapper).
         3. Status words used so far: building, shipped, exploring. Any word works; the chip is just text.
@@ -156,49 +155,10 @@
         </div>
       </article>
 
-      <div class="stubs">
-        <article class="project project--stub reveal" aria-label="Placeholder project">
-          <div class="project__visual"><div class="blank" aria-hidden="true"><svg class="doodle doodle--blank" viewBox="0 0 200 130"></svg></div></div>
-          <p class="project__meta mono"><span class="project__no">02</span><span class="chip chip--ph"><i aria-hidden="true"></i><span class="ph">[ status ]</span></span></p>
-          <h3 class="project__title"><span class="ph">[ Project name ]</span></h3>
-          <p class="project__one"><span class="ph">[ one line: what it is ]</span></p>
-          <p class="project__why"><span class="ph">[ why it matters, in a sentence ]</span></p>
-          <p class="link link--ph"><span class="ph">[ link ]</span></p>
-        </article>
-        <article class="project project--stub reveal" style="--d:1" aria-label="Placeholder project">
-          <div class="project__visual"><div class="blank" aria-hidden="true"><svg class="doodle doodle--blank" viewBox="0 0 200 130"></svg></div></div>
-          <p class="project__meta mono"><span class="project__no">03</span><span class="chip chip--ph"><i aria-hidden="true"></i><span class="ph">[ status ]</span></span></p>
-          <h3 class="project__title"><span class="ph">[ Project name ]</span></h3>
-          <p class="project__one"><span class="ph">[ one line: what it is ]</span></p>
-          <p class="project__why"><span class="ph">[ why it matters, in a sentence ]</span></p>
-          <p class="link link--ph"><span class="ph">[ link ]</span></p>
-        </article>
-        <article class="project project--stub reveal" style="--d:2" aria-label="Placeholder project">
-          <div class="project__visual"><div class="blank" aria-hidden="true"><svg class="doodle doodle--blank" viewBox="0 0 200 130"></svg></div></div>
-          <p class="project__meta mono"><span class="project__no">04</span><span class="chip chip--ph"><i aria-hidden="true"></i><span class="ph">[ status ]</span></span></p>
-          <h3 class="project__title"><span class="ph">[ Project name ]</span></h3>
-          <p class="project__one"><span class="ph">[ one line: what it is ]</span></p>
-          <p class="project__why"><span class="ph">[ why it matters, in a sentence ]</span></p>
-          <p class="link link--ph"><span class="ph">[ link ]</span></p>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================================================ PLAY -->
-  <section class="play section" id="play" aria-labelledby="play-title">
-    <div class="wrap">
-      <header class="section__head">
-        <p class="mono reveal">03 <span aria-hidden="true">/</span> what I'm into</p>
-        <h2 class="display reveal" id="play-title" style="--d:1">Off the clock,<br><em>still learning.</em></h2>
-        <p class="section__intro reveal" style="--d:2">Soccer, basketball and guitar are not a break from how I work. They are where a lot of it comes from.</p>
-      </header>
-    </div>
-
-    <article class="sport" id="soccer" aria-labelledby="soccer-title">
+    <article class="sport sport--break" id="soccer" aria-labelledby="soccer-title">
       <div class="sport__stage" aria-hidden="true"><svg class="scene" data-scene="soccer" focusable="false"></svg></div>
-      <div class="wrap sport__copy">
-        <p class="mono reveal">soccer</p>
+      <div class="sport__copy">
+        <p class="mono reveal">between projects <span aria-hidden="true">/</span> soccer</p>
         <h3 class="sport__title reveal" id="soccer-title" style="--d:1">The goal is the last thing that happens.</h3>
         <div class="sport__text reveal" style="--d:2">
           <p>The part people see is a second long. The part that decides it is the run-up: where you plant, how you set your body, how calm you are when the ball arrives. I like work that gets the setup right so the final step feels easy.</p>
@@ -207,10 +167,21 @@
       </div>
     </article>
 
-    <article class="sport sport--flip" id="basketball" aria-labelledby="basket-title">
+        <article class="project project--stub reveal" aria-label="Placeholder project">
+          <div class="project__visual"><div class="blank" aria-hidden="true"><svg class="doodle doodle--blank" viewBox="0 0 200 130"></svg></div></div>
+          <div class="project__story">
+          <p class="project__meta mono"><span class="project__no">02</span><span class="chip chip--ph"><i aria-hidden="true"></i><span class="ph">[ status ]</span></span></p>
+          <h3 class="project__title"><span class="ph">[ Project name ]</span></h3>
+          <p class="project__one"><span class="ph">[ one line: what it is ]</span></p>
+          <p class="project__why"><span class="ph">[ why it matters, in a sentence ]</span></p>
+          <p class="link link--ph"><span class="ph">[ link ]</span></p>
+          </div>
+        </article>
+
+    <article class="sport sport--break sport--flip" id="basketball" aria-labelledby="basket-title">
       <div class="sport__stage" aria-hidden="true"><svg class="scene" data-scene="basket" focusable="false"></svg></div>
-      <div class="wrap sport__copy">
-        <p class="mono reveal">basketball</p>
+      <div class="sport__copy">
+        <p class="mono reveal">between projects <span aria-hidden="true">/</span> basketball</p>
         <h3 class="sport__title reveal" id="basket-title" style="--d:1">Same form, thousands of times.</h3>
         <div class="sport__text reveal" style="--d:2">
           <p>A good shot is a habit, not a moment. Get the form right, repeat it until it holds up under pressure, then adjust one small thing at a time. Shipping software works the same way.</p>
@@ -219,10 +190,21 @@
       </div>
     </article>
 
-    <article class="sport" id="guitar" aria-labelledby="guitar-title">
+        <article class="project project--stub project--flip reveal" style="--d:1" aria-label="Placeholder project">
+          <div class="project__visual"><div class="blank" aria-hidden="true"><svg class="doodle doodle--blank" viewBox="0 0 200 130"></svg></div></div>
+          <div class="project__story">
+          <p class="project__meta mono"><span class="project__no">03</span><span class="chip chip--ph"><i aria-hidden="true"></i><span class="ph">[ status ]</span></span></p>
+          <h3 class="project__title"><span class="ph">[ Project name ]</span></h3>
+          <p class="project__one"><span class="ph">[ one line: what it is ]</span></p>
+          <p class="project__why"><span class="ph">[ why it matters, in a sentence ]</span></p>
+          <p class="link link--ph"><span class="ph">[ link ]</span></p>
+          </div>
+        </article>
+
+    <article class="sport sport--break" id="guitar" aria-labelledby="guitar-title">
       <div class="sport__stage" aria-hidden="true"><svg class="scene" data-scene="guitar" focusable="false"></svg></div>
-      <div class="wrap sport__copy">
-        <p class="mono reveal">guitar</p>
+      <div class="sport__copy">
+        <p class="mono reveal">between projects <span aria-hidden="true">/</span> guitar</p>
         <h3 class="sport__title reveal" id="guitar-title" style="--d:1">Playing is mostly listening.</h3>
         <div class="sport__text reveal" style="--d:2">
           <p>You hold a groove by paying attention to everything around your own part. It is a good reminder for building things with other people: the work is better when you listen to the room first.</p>
@@ -230,14 +212,27 @@
         </div>
       </div>
     </article>
-    <p class="wrap play__draft mono mono--soft"><span class="ph">[ the lines above are draft copy - rewrite them in your own words ]</span></p>
+
+        <article class="project project--stub reveal" style="--d:2" aria-label="Placeholder project">
+          <div class="project__visual"><div class="blank" aria-hidden="true"><svg class="doodle doodle--blank" viewBox="0 0 200 130"></svg></div></div>
+          <div class="project__story">
+          <p class="project__meta mono"><span class="project__no">04</span><span class="chip chip--ph"><i aria-hidden="true"></i><span class="ph">[ status ]</span></span></p>
+          <h3 class="project__title"><span class="ph">[ Project name ]</span></h3>
+          <p class="project__one"><span class="ph">[ one line: what it is ]</span></p>
+          <p class="project__why"><span class="ph">[ why it matters, in a sentence ]</span></p>
+          <p class="link link--ph"><span class="ph">[ link ]</span></p>
+          </div>
+        </article>
+
+      <p class="work__draft mono mono--soft"><span class="ph">[ the soccer, basketball and guitar lines between projects are draft copy - rewrite them in your own words ]</span></p>
+    </div>
   </section>
 
   <!-- ============================================================ ABOUT -->
   <section class="about section" id="about" aria-labelledby="about-title">
     <div class="wrap grid">
       <header class="section__label reveal">
-        <p class="mono">04 <span aria-hidden="true">/</span> about</p>
+        <p class="mono">03 <span aria-hidden="true">/</span> about</p>
       </header>
       <div class="about__body">
         <h2 class="display display--m reveal" id="about-title">A little about me.</h2>
@@ -265,7 +260,7 @@
     <div class="wrap contact__grid">
       <div class="contact__stage" aria-hidden="true"><svg class="scene" data-scene="wave" focusable="false"></svg></div>
       <div class="contact__body">
-        <p class="mono reveal">05 <span aria-hidden="true">/</span> contact</p>
+        <p class="mono reveal">04 <span aria-hidden="true">/</span> contact</p>
         <h2 class="contact__title reveal" id="contact-title" style="--d:1">Let's talk.</h2>
         <p class="contact__lede reveal" style="--d:2">If something here sparked an idea, if you are building something that gives people hope, or if you just want to talk soccer, I would like to hear from you.</p>
         <a class="contact__mail reveal" style="--d:3" href="mailto:matthewcross2003@gmail.com">matthewcross2003@gmail.com<svg class="contact__underline" viewBox="0 0 400 20" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg></a>

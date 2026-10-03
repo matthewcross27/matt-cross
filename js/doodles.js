@@ -77,13 +77,6 @@
     var ring = map.ring, c = [ring[0] * W, ring[1] * H];
     var g = s('g', { 'class': 'marks' }, svg);
     pen.ellipse(g, c[0], c[1], map.ringR[0] * W, map.ringR[1] * H, { w: 2.6, color: RED, amp: 1.4, overshoot: true });
-    /* arrow: note -> ring */
-    var a = map.tenArrow, pts = a.map(function (q) { return [q[0] * W, q[1] * H]; });
-    pen.curve(g, pts, { w: 2.4, color: '#fbf8ef', amp: 1, ghost: false });
-    var e = pts[pts.length - 1], d = pts[pts.length - 2];
-    var ang = Math.atan2(e[1] - d[1], e[0] - d[0]);
-    pen.line(g, e[0], e[1], e[0] - Math.cos(ang - 0.5) * 12, e[1] - Math.sin(ang - 0.5) * 12, { w: 2.4, color: '#fbf8ef', ghost: false, amp: 0.2 });
-    pen.line(g, e[0], e[1], e[0] - Math.cos(ang + 0.5) * 12, e[1] - Math.sin(ang + 0.5) * 12, { w: 2.4, color: '#fbf8ef', ghost: false, amp: 0.2 });
     /* arrow: sky note -> skyline */
     var b = map.skyArrow, bp = b.map(function (q) { return [q[0] * W, q[1] * H]; });
     pen.curve(g, bp, { w: 2.4, color: NAVY, amp: 1, ghost: false });
