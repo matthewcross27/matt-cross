@@ -153,8 +153,8 @@ a { color: inherit; }
 .hero__hi { position: absolute; left: 0.1em; top: -0.4em; font-family: var(--hand); font-size: 0.26em; line-height: 1; letter-spacing: 0; color: var(--blue); rotate: -5deg; transform-origin: left bottom; animation: hand-in 0.5s var(--ease-out) 0.55s backwards; }
 .hero__line { display: block; overflow: hidden; padding: 0.04em 0.12em 0.1em 0.04em; margin: -0.04em -0.12em -0.1em -0.04em; }
 .hero__word { position: relative; display: inline-block; animation: rise 0.75s var(--ease-out) backwards; }
-.hero__line:nth-of-type(1) .hero__word { animation-delay: 0.08s; }
-.hero__line:nth-of-type(2) .hero__word { animation-delay: 0.2s; }
+.hero__line:nth-of-type(2) .hero__word { animation-delay: 0.08s; }
+.hero__line:nth-of-type(3) .hero__word { animation-delay: 0.2s; }
 .hero__name em { font-style: italic; color: var(--blue-ink); padding-right: 0.06em; }
 .hero__scribble { position: absolute; left: 2%; right: 4%; bottom: 0.02em; width: 94%; height: 0.17em; overflow: visible; }
 .hero__scribble path { stroke: var(--red); fill: none; stroke-linecap: round; stroke-width: 5px; animation: draw 0.6s var(--ease-out) 0.85s backwards; }
@@ -181,6 +181,7 @@ a { color: inherit; }
 .note--sky { color: var(--blue-ink); rotate: -4deg; max-width: 27%; }
 .note--ten { color: var(--paper-hi); rotate: -3deg; animation-delay: 1.25s; }
 
+html:not(.js) .note { display: none; }
 .tape { position: absolute; z-index: 2; width: clamp(62px, 8vw, 96px); height: clamp(20px, 2.4vw, 28px); background: rgba(255, 242, 190, 0.62); box-shadow: 0 1px 2px rgba(38, 39, 43, 0.14); clip-path: polygon(0 8%, 4% 0, 8% 10%, 12% 0, 100% 0, 96% 50%, 100% 100%, 92% 92%, 88% 100%, 0 100%, 3% 50%); }
 .tape--a { left: -20px; top: -8px; rotate: -38deg; }
 .tape--b { right: -22px; top: -6px; rotate: 34deg; }
@@ -317,6 +318,7 @@ a { color: inherit; }
 @media (max-width: 700px) {
   :root { --bar-h: 56px; }
   .hero__eyebrow .eb-long { display: none; }
+  .skyline { height: clamp(90px, 15vh, 130px); }
   .print { margin-top: 36px; }
   .print__photo { aspect-ratio: 4 / 5; }
   .print__photo img { object-position: 50% 50%; }

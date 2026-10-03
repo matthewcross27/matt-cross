@@ -241,7 +241,7 @@
       return { o: up * down, s: 0.7 + 0.5 * clamp((p - pc) / 0.04, 0, 1) };
     });
 
-    return { scene: scene, choreo: ch, fig: fig, viewNarrow: '200 160 640 380' };
+    return { scene: scene, choreo: ch, fig: fig, viewNarrow: '230 160 660 380' };
   }
 
   /* ============================================================ BASKETBALL */
@@ -383,7 +383,7 @@
       return { o: t < 0 || t > 0.07 ? 0 : clamp(t / 0.01, 0, 1) * (1 - clamp((t - 0.015) / 0.05, 0, 1)), s: 0.8 + clamp(t / 0.05, 0, 1) * 0.4 };
     });
 
-    return { scene: scene, choreo: ch, fig: fig, viewNarrow: '240 20 640 490' };
+    return { scene: scene, choreo: ch, fig: fig, viewNarrow: '250 20 660 490' };
   }
 
   /* ============================================================ GUITAR */
@@ -492,7 +492,7 @@
       });
     });
 
-    return { scene: scene, choreo: ch, fig: fig, viewNarrow: '250 120 540 390' };
+    return { scene: scene, choreo: ch, fig: fig, viewNarrow: '310 130 560 380' };
   }
 
 
