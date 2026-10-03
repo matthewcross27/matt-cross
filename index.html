@@ -1,208 +1,294 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Matt Cross</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Matt Cross - what I'm building and what I'm into</title>
+  <meta name="description" content="Matt Cross's personal site: the projects he's building right now, and the things he's into when he's not building - soccer, basketball and guitar.">
+  <meta name="theme-color" content="#f4efe3">
+  <meta property="og:title" content="Matt Cross">
+  <meta property="og:description" content="What I'm building, and what I'm into.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://matt-cross.com/assets/img/matt-window-1280.jpg">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23f4efe3'/%3E%3Cpath d='M6 24 L9 9 L16 20 L23 9 L26 24' fill='none' stroke='%2326272b' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <script>document.documentElement.classList.add('js');</script>
+  <link rel="preload" href="assets/fonts/instrument-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/newsreader-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/dm-mono-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
-<a class="skip-link" href="#main-content">Skip to content</a>
-<div class="grain" aria-hidden="true"></div>
-
-<nav class="nav" aria-label="Section navigation">
-  <div class="nav__track" aria-hidden="true">
-    <div id="nav-dot" class="nav__dot"></div>
-  </div>
-  <div class="nav__labels" aria-hidden="true">
-    <span>01<br>soccer</span>
-    <span>02<br>hoops</span>
-    <span>03<br>guitar</span>
-  </div>
-</nav>
-
-<main id="main-content">
-
-  <section class="hero" aria-label="Introduction">
-    <p class="hero__eyebrow">a personal site · 2026</p>
-    <svg width="64" height="18" viewBox="0 0 64 18" fill="none" stroke="#2b2b2b"
-         stroke-width="2" stroke-linecap="round" style="opacity:.45;margin:10px 0" aria-hidden="true">
-      <path d="M3 9 Q10 1 17 9 T31 9 T45 9 T59 9"/>
+<header class="bar" id="bar">
+  <a class="bar__logo" href="#top" aria-label="Matt Cross, back to top">
+    <svg viewBox="0 0 44 30" width="44" height="30" aria-hidden="true" focusable="false">
+      <path d="M3 25 L6.5 5 L15 19 L23.5 4 L26 25" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M40 9.5 Q33 1.5 31.5 14 Q30.5 26.5 41 21" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
-    <h1 class="hero__h1" aria-label="Hi, I'm Matt">
-      <span class="hero__word" aria-hidden="true">
-        <span class="hero__char">H</span><span class="hero__char">i</span><span class="hero__char">,</span>
-      </span>
-      <span class="hero__word" aria-hidden="true">
-        <span class="hero__char">I</span><span class="hero__char">'</span><span class="hero__char">m</span>
-      </span>
-      <em class="hero__word" aria-hidden="true">
-        <span class="hero__char">M</span><span class="hero__char">a</span><span class="hero__char">t</span><span class="hero__char">t</span>
-      </em>
-      <span class="hero__char" style="opacity:.35" aria-hidden="true">…</span>
-    </h1>
-    <p class="hero__sub">I care about the big problems in the world and the systems shaping it. I want to build a sustainable future that's good for people, and design things that give them hope.</p>
-    <!-- Populated by setupHero() in main.js with the shared scrub-vignette.js
-         stick-figure rig (same character as the soccer + basketball figures),
-         drawn front-facing: two eyes + a smile (rig `face`), a wrist per arm
-         (`hands`) so the raised hand can trail the forearm. The wave is a
-         side-to-side hermite pose loop; no live SVG filter - the hand-drawn look
-         is a static rough.js pass, like the other two figures. -->
-    <svg class="hero__figure" viewBox="0 0 120 165" aria-label="Waving stick figure" role="img"></svg>
-    <div class="hero__scroll-cue" aria-hidden="true">
-      scroll<span class="hero__scroll-arrow">↓</span>
-    </div>
-  </section>
+  </a>
+  <nav class="bar__nav" aria-label="Primary">
+    <a href="#now" data-spy="now">Now</a>
+    <a href="#work" data-spy="work">Work</a>
+    <a href="#play" data-spy="play">Play</a>
+    <a href="#about" data-spy="about">About</a>
+    <a href="#contact" class="bar__cta" data-spy="contact">Say hello</a>
+  </nav>
+</header>
 
-  <section id="sec-soccer" class="section section--pinned" aria-label="Soccer">
-   <div class="section__pin">
-    <div class="section__anim" aria-hidden="true">
-      <!-- No live SVG wobble filters here: on the scroll-scrub they were a
-           real per-frame GPU re-raster cost (see AGENTS.md). The hand-drawn
-           look now comes from a static rough.js pass drawn once in main.js. -->
-      <svg class="soccer-scene" viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice">
-        <g class="layer-crowd"></g>
-        <g class="layer-pitch"></g>
-        <path class="shot-path" d="M144,272 Q378,104 592,178" fill="none" stroke="none"/>
-        <path class="chalk-trail" d="M144,272 Q378,104 592,178" fill="none" stroke="var(--soccer)" stroke-width="1.6" stroke-linecap="round" opacity="0.55"/>
-        <ellipse class="ball-shadow" cx="144" cy="290" rx="13" ry="4" fill="rgba(43,43,43,.28)"/>
-        <g class="ball-group">
-          <circle r="12" fill="#f1ebdd" stroke="#2b2b2b" stroke-width="2.2"/>
-          <line x1="-7" y1="-2" x2="0" y2="7" stroke="#2b2b2b" stroke-width="1.3"/>
-          <line x1="7" y1="-2" x2="0" y2="7" stroke="#2b2b2b" stroke-width="1.3"/>
-          <line x1="0" y1="7" x2="0" y2="12" stroke="#2b2b2b" stroke-width="1.3"/>
-        </g>
-        <g class="layer-flourish"></g>
-      </svg>
-    </div>
-    <div class="section__content">
-      <div class="section__header">
-        <span class="section__num" style="color:var(--soccer)">01</span>
-        <h2 class="section__title">Soccer</h2>
+<main id="main">
+
+  <!-- ============================================================ HERO -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <div class="hero__grid">
+      <div class="hero__copy">
+        <p class="hero__eyebrow mono">a personal site <span class="eb-long" aria-hidden="true">/</span> <span class="eb-long">what I'm building, what I'm into</span></p>
+        <h1 class="hero__name" id="hero-title">
+          <span class="hero__hi" aria-hidden="true">hi, I'm</span>
+          <span class="hero__line"><span class="hero__word">Matt</span></span>
+          <span class="hero__line"><span class="hero__word"><em>Cross</em><svg class="hero__scribble" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg></span></span>
+        </h1>
+        <p class="hero__lede">I care about the big problems in the world and the systems shaping it. I want to build a sustainable future that's good for people, and design things that give them hope.</p>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="#work"><span>See what I'm building</span><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false"><path d="M10 3 V16 M4.5 10.5 L10 16 L15.5 10.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          <a class="btn btn--ghost" href="#contact"><span>Say hello</span></a>
+        </div>
       </div>
-      <p class="section__caption">[ a line about what the pitch means to you ]</p>
+
+      <figure class="print" aria-label="Photo of Matt">
+        <svg class="print__sketch" viewBox="-44 -100 130 200" aria-hidden="true" focusable="false"></svg>
+        <div class="print__sheet">
+          <span class="tape tape--a" aria-hidden="true"></span>
+          <span class="tape tape--b" aria-hidden="true"></span>
+          <div class="print__photo">
+            <picture>
+              <source media="(max-width: 700px)" type="image/avif" srcset="assets/img/matt-portrait-480.avif 480w, assets/img/matt-portrait-720.avif 720w, assets/img/matt-portrait-960.avif 960w" sizes="(max-width: 700px) calc(100vw - 72px)">
+              <source media="(max-width: 700px)" type="image/webp" srcset="assets/img/matt-portrait-480.webp 480w, assets/img/matt-portrait-720.webp 720w, assets/img/matt-portrait-960.webp 960w" sizes="(max-width: 700px) calc(100vw - 72px)">
+              <source type="image/avif" srcset="assets/img/matt-window-640.avif 640w, assets/img/matt-window-960.avif 960w, assets/img/matt-window-1280.avif 1280w, assets/img/matt-window-1600.avif 1600w" sizes="(min-width: 1700px) 820px, (min-width: 1100px) 620px, (min-width: 701px) 52vw, 100vw">
+              <source type="image/webp" srcset="assets/img/matt-window-640.webp 640w, assets/img/matt-window-960.webp 960w, assets/img/matt-window-1280.webp 1280w, assets/img/matt-window-1600.webp 1600w" sizes="(min-width: 1700px) 820px, (min-width: 1100px) 620px, (min-width: 701px) 52vw, 100vw">
+              <img src="assets/img/matt-window-960.jpg"
+                   srcset="assets/img/matt-window-640.jpg 640w, assets/img/matt-window-960.jpg 960w, assets/img/matt-window-1280.jpg 1280w, assets/img/matt-window-1600.jpg 1600w"
+                   sizes="(min-width: 1700px) 820px, (min-width: 1100px) 620px, (min-width: 701px) 52vw, 100vw"
+                   width="1600" height="1200" fetchpriority="high" decoding="async"
+                   alt="Matt sitting on a window ledge in an England number 10 shirt, looking out over the New York City skyline">
+            </picture>
+            <svg class="print__marks" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg>
+            <span class="note note--sky" aria-hidden="true">a lot of systems down there</span>
+            <span class="note note--ten" aria-hidden="true">soccer, always</span>
+          </div>
+          <figcaption class="print__caption">window seat, mid-thought</figcaption>
+        </div>
+      </figure>
     </div>
-   </div>
+
+    <svg class="skyline" viewBox="0 0 1600 240" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false"></svg>
+    <a class="hero__cue" href="#now" aria-label="Scroll to the next section">
+      <span class="mono">scroll</span>
+      <svg viewBox="0 0 20 30" width="16" height="24" aria-hidden="true" focusable="false"><path d="M10 3 Q9 14 10 25 M4 19 L10 26 L16 19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
   </section>
 
-  <section id="sec-basket" class="section section--pinned" aria-label="Basketball">
-   <div class="section__pin">
-    <div class="section__anim" aria-hidden="true">
-      <!-- Same static-rough.js + native-CSS-scroll-driven system as soccer
-           (see AGENTS.md). No live SVG wobble filters, no mid-scroll redraw. -->
-      <svg class="basket-scene" viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice">
-        <g class="layer-crowd"></g>
-        <g class="layer-court"></g>
-        <g class="layer-hoop"></g>
-        <ellipse class="figure-shadow" cx="224" cy="302" rx="11" ry="3" fill="rgba(43,43,43,.24)"/>
-        <path class="shot-path" d="M0,0" fill="none" stroke="none"/>
-        <path class="arc-trail" d="M0,0" fill="none" stroke="var(--basket)" stroke-width="1.6" stroke-linecap="round" opacity="0.5"/>
-        <g class="ball-carry">
-          <g class="ball-group">
-            <circle r="10" fill="#f1ebdd" stroke="#2b2b2b" stroke-width="2.1"/>
-            <line x1="-10" y1="0" x2="10" y2="0" stroke="#2b2b2b" stroke-width="1.3"/>
-            <path d="M0 -10 Q5 0 0 10" stroke="#2b2b2b" stroke-width="1.3" fill="none"/>
-            <path d="M0 -10 Q-5 0 0 10" stroke="#2b2b2b" stroke-width="1.3" fill="none"/>
-          </g>
-        </g>
-        <g class="layer-flourish"></g>
-      </svg>
-    </div>
-    <div class="section__content">
-      <div class="section__header">
-        <span class="section__num" style="color:var(--basket)">02</span>
-        <h2 class="section__title">Basketball</h2>
+  <!-- ============================================================ NOW -->
+  <section class="now section" id="now" aria-labelledby="now-title">
+    <div class="wrap grid">
+      <header class="section__label reveal">
+        <p class="mono">01 <span aria-hidden="true">/</span> now</p>
+        <p class="mono mono--soft">[ last updated: fill in ]</p>
+      </header>
+      <div class="now__body">
+        <h2 class="visually-hidden" id="now-title">Now</h2>
+        <p class="now__big reveal">Right now I'm building <a class="hl" href="#work">BountifulCSAs</a>, software that lets small, independent organic and regenerative farms run their own CSA programs.</p>
+        <p class="now__small reveal" style="--d:1">
+          <span class="ph">[ one or two sentences on what you're reading, learning or thinking about this season - fill in ]</span>
+        </p>
       </div>
-      <p class="section__caption">[ the rhythm of the shot ]</p>
+      <svg class="now__doodle doodle" viewBox="0 0 160 200" aria-hidden="true" focusable="false"></svg>
     </div>
-   </div>
   </section>
 
-  <section id="sec-guitar" class="section section--pinned" aria-label="Guitar">
-   <div class="section__pin">
-    <div class="section__anim" aria-hidden="true">
-      <!-- Decorative scroll-scrub (a guitarist crosses the frame and turns once),
-           built on the same static-rough.js + native-CSS-scroll-driven system as
-           soccer and basketball - see setupGuitar() in main.js and AGENTS.md. No
-           live SVG wobble filters, no mid-scroll redraw, no wall-clock loop. -->
-      <svg class="guitar-scene" viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice">
-        <g class="layer-wall"></g>
-        <g class="layer-window"></g>
-        <g class="layer-props"></g>
-        <g class="layer-floor"></g>
-        <g class="layer-notes"></g>
-      </svg>
-    </div>
-    <div class="section__content">
-      <div class="section__header">
-        <span class="section__num" style="color:var(--guitar)">03</span>
-        <h2 class="section__title">Guitar</h2>
+  <!-- ============================================================ WORK -->
+  <section class="work section" id="work" aria-labelledby="work-title">
+    <div class="wrap">
+      <header class="section__head">
+        <p class="mono reveal">02 <span aria-hidden="true">/</span> ongoing work</p>
+        <h2 class="display reveal" id="work-title" style="--d:1">Things I'm building,<br><em>and chasing.</em></h2>
+        <p class="section__intro reveal" style="--d:2">Each one is a short story: what it is, why it matters, where it stands today. New pages get added here as they happen.</p>
+      </header>
+
+      <!--
+        ADDING A PROJECT
+        1. Duplicate one <article class="project project--stub"> block below (a compact card), or the full
+           <article class="project project--feature"> block (a story with a visual).
+        2. Fill in the text. Replace the doodle placeholder with <img src="assets/..." alt="..."> when a real
+           screenshot exists (keep the .project__visual wrapper).
+        3. Status words used so far: building, shipped, exploring. Any word works; the chip is just text.
+        Placeholders are written in [ square brackets ] with class="ph" so they are easy to find and replace.
+      -->
+
+      <article class="project project--feature" id="bountifulcsas" aria-labelledby="p1-title">
+        <div class="project__visual reveal">
+          <div class="sheet">
+            <span class="tape tape--a" aria-hidden="true"></span>
+            <svg class="doodle doodle--csa" viewBox="0 0 640 440" role="img" aria-label="Sketch: buyers sign up and pay, the farm sees demand forecasts for each crop, and boxes go out each week"></svg>
+            <p class="sheet__note mono"><span class="ph">[ screenshot of the platform - add when ready ]</span></p>
+          </div>
+        </div>
+        <div class="project__story">
+          <p class="project__meta mono reveal"><span class="project__no">01</span><span class="chip chip--building"><i aria-hidden="true"></i>Building</span></p>
+          <h3 class="project__title reveal" id="p1-title" style="--d:1">BountifulCSAs</h3>
+          <p class="project__one reveal" style="--d:2">A platform that lets small independent farms run their own CSA (box subscription) programs.</p>
+          <div class="project__body reveal" style="--d:3">
+            <h4 class="mono">What it does</h4>
+            <ul class="project__list">
+              <li>Buyer signup and recurring payments</li>
+              <li>Per-crop demand forecasting and supply planning</li>
+              <li>Buyer communication, in one place</li>
+              <li>Moving existing buyers off manual email and text workflows</li>
+            </ul>
+            <h4 class="mono">Why it matters</h4>
+            <p><span class="ph">[ why this matters to you and to the farms - fill in ]</span></p>
+            <dl class="project__facts">
+              <div><dt class="mono">My role</dt><dd><span class="ph">[ your role - fill in ]</span></dd></div>
+              <div><dt class="mono">Outcomes</dt><dd><span class="ph">[ outcomes, numbers, quotes - fill in ]</span></dd></div>
+            </dl>
+            <a class="link" href="https://github.com/matthewcross27/BountifulCSAs" target="_blank" rel="noopener">View on GitHub<span class="visually-hidden"> (opens in a new tab)</span><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 14 L14 6 M7.5 5.5 H14.5 V12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          </div>
+        </div>
+      </article>
+
+      <div class="stubs">
+        <article class="project project--stub reveal" aria-label="Placeholder project">
+          <div class="project__visual"><div class="blank" aria-hidden="true"><svg class="doodle doodle--blank" viewBox="0 0 200 130"></svg></div></div>
+          <p class="project__meta mono"><span class="project__no">02</span><span class="chip chip--ph"><i aria-hidden="true"></i><span class="ph">[ status ]</span></span></p>
+          <h3 class="project__title"><span class="ph">[ Project name ]</span></h3>
+          <p class="project__one"><span class="ph">[ one line: what it is ]</span></p>
+          <p class="project__why"><span class="ph">[ why it matters, in a sentence ]</span></p>
+          <p class="link link--ph"><span class="ph">[ link ]</span></p>
+        </article>
+        <article class="project project--stub reveal" style="--d:1" aria-label="Placeholder project">
+          <div class="project__visual"><div class="blank" aria-hidden="true"><svg class="doodle doodle--blank" viewBox="0 0 200 130"></svg></div></div>
+          <p class="project__meta mono"><span class="project__no">03</span><span class="chip chip--ph"><i aria-hidden="true"></i><span class="ph">[ status ]</span></span></p>
+          <h3 class="project__title"><span class="ph">[ Project name ]</span></h3>
+          <p class="project__one"><span class="ph">[ one line: what it is ]</span></p>
+          <p class="project__why"><span class="ph">[ why it matters, in a sentence ]</span></p>
+          <p class="link link--ph"><span class="ph">[ link ]</span></p>
+        </article>
+        <article class="project project--stub reveal" style="--d:2" aria-label="Placeholder project">
+          <div class="project__visual"><div class="blank" aria-hidden="true"><svg class="doodle doodle--blank" viewBox="0 0 200 130"></svg></div></div>
+          <p class="project__meta mono"><span class="project__no">04</span><span class="chip chip--ph"><i aria-hidden="true"></i><span class="ph">[ status ]</span></span></p>
+          <h3 class="project__title"><span class="ph">[ Project name ]</span></h3>
+          <p class="project__one"><span class="ph">[ one line: what it is ]</span></p>
+          <p class="project__why"><span class="ph">[ why it matters, in a sentence ]</span></p>
+          <p class="link link--ph"><span class="ph">[ link ]</span></p>
+        </article>
       </div>
-      <p class="section__caption">[ what you play when no one's around ]</p>
-    </div>
-   </div>
-  </section>
-
-  <section class="projects" aria-label="Selected work">
-    <p class="projects__eyebrow">selected work</p>
-    <div class="projects__grid">
-      <article class="project-card">
-        <svg class="project-card__border" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <defs><filter id="rc1"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="2"/><feDisplacementMap in="SourceGraphic" scale="1.4"/></filter></defs>
-          <rect x="1" y="1" width="98" height="98" filter="url(#rc1)"/>
-        </svg>
-        <p class="project-card__label">2025 · Web</p>
-        <h3 class="project-card__title">Project One</h3>
-        <p class="project-card__desc">[ one sentence — what it does and why it matters ]</p>
-        <a class="project-card__link" href="#" target="_blank" rel="noopener">view ↗</a>
-      </article>
-      <article class="project-card">
-        <svg class="project-card__border" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <defs><filter id="rc2"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="9"/><feDisplacementMap in="SourceGraphic" scale="1.4"/></filter></defs>
-          <rect x="1" y="1" width="98" height="98" filter="url(#rc2)"/>
-        </svg>
-        <p class="project-card__label">2025 · Design</p>
-        <h3 class="project-card__title">Project Two</h3>
-        <p class="project-card__desc">[ one sentence — what it does and why it matters ]</p>
-        <a class="project-card__link" href="#" target="_blank" rel="noopener">view ↗</a>
-      </article>
-      <article class="project-card">
-        <svg class="project-card__border" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <defs><filter id="rc3"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="14"/><feDisplacementMap in="SourceGraphic" scale="1.4"/></filter></defs>
-          <rect x="1" y="1" width="98" height="98" filter="url(#rc3)"/>
-        </svg>
-        <p class="project-card__label">2024 · Tool</p>
-        <h3 class="project-card__title">Project Three</h3>
-        <p class="project-card__desc">[ one sentence — what it does and why it matters ]</p>
-        <a class="project-card__link" href="#" target="_blank" rel="noopener">view ↗</a>
-      </article>
     </div>
   </section>
 
-  <footer class="footer" aria-label="Contact">
-    <p class="footer__eyebrow">say hello</p>
-    <a class="footer__email" href="mailto:matthewcross2003@gmail.com">matthewcross2003@gmail.com</a>
-    <div class="footer__links">
-      <a href="https://github.com/" target="_blank" rel="noopener">github</a>
-      <a href="#" target="_blank" rel="noopener">linkedin</a>
+  <!-- ============================================================ PLAY -->
+  <section class="play section" id="play" aria-labelledby="play-title">
+    <div class="wrap">
+      <header class="section__head">
+        <p class="mono reveal">03 <span aria-hidden="true">/</span> what I'm into</p>
+        <h2 class="display reveal" id="play-title" style="--d:1">Off the clock,<br><em>still learning.</em></h2>
+        <p class="section__intro reveal" style="--d:2">Soccer, basketball and guitar are not a break from how I work. They are where a lot of it comes from.</p>
+      </header>
     </div>
-    <p class="footer__tagline">drawn by hand · 2026</p>
-  </footer>
 
+    <article class="sport" id="soccer" aria-labelledby="soccer-title">
+      <div class="sport__stage" aria-hidden="true"><svg class="scene" data-scene="soccer" focusable="false"></svg></div>
+      <div class="wrap sport__copy">
+        <p class="mono reveal">soccer</p>
+        <h3 class="sport__title reveal" id="soccer-title" style="--d:1">The goal is the last thing that happens.</h3>
+        <div class="sport__text reveal" style="--d:2">
+          <p>The part people see is a second long. The part that decides it is the run-up: where you plant, how you set your body, how calm you are when the ball arrives. I like work that gets the setup right so the final step feels easy.</p>
+          <p class="ph">[ your soccer story: how long you've played, position, the team you'd die for - fill in ]</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="sport sport--flip" id="basketball" aria-labelledby="basket-title">
+      <div class="sport__stage" aria-hidden="true"><svg class="scene" data-scene="basket" focusable="false"></svg></div>
+      <div class="wrap sport__copy">
+        <p class="mono reveal">basketball</p>
+        <h3 class="sport__title reveal" id="basket-title" style="--d:1">Same form, thousands of times.</h3>
+        <div class="sport__text reveal" style="--d:2">
+          <p>A good shot is a habit, not a moment. Get the form right, repeat it until it holds up under pressure, then adjust one small thing at a time. Shipping software works the same way.</p>
+          <p class="ph">[ your basketball story: pickup runs, a shot you're proud of, who you play with - fill in ]</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="sport" id="guitar" aria-labelledby="guitar-title">
+      <div class="sport__stage" aria-hidden="true"><svg class="scene" data-scene="guitar" focusable="false"></svg></div>
+      <div class="wrap sport__copy">
+        <p class="mono reveal">guitar</p>
+        <h3 class="sport__title reveal" id="guitar-title" style="--d:1">Playing is mostly listening.</h3>
+        <div class="sport__text reveal" style="--d:2">
+          <p>You hold a groove by paying attention to everything around your own part. It is a good reminder for building things with other people: the work is better when you listen to the room first.</p>
+          <p class="ph">[ your guitar story: what you play, who taught you, a song you keep coming back to - fill in ]</p>
+        </div>
+      </div>
+    </article>
+    <p class="wrap play__draft mono mono--soft"><span class="ph">[ the lines above are draft copy - rewrite them in your own words ]</span></p>
+  </section>
+
+  <!-- ============================================================ ABOUT -->
+  <section class="about section" id="about" aria-labelledby="about-title">
+    <div class="wrap grid">
+      <header class="section__label reveal">
+        <p class="mono">04 <span aria-hidden="true">/</span> about</p>
+      </header>
+      <div class="about__body">
+        <h2 class="display display--m reveal" id="about-title">A little about me.</h2>
+        <p class="about__text reveal" style="--d:1">I'm Matt. <span class="ph">[ where you're based, what you do day to day, how you got here - fill in ]</span></p>
+        <p class="about__text reveal" style="--d:2">I like problems that are bigger than one person and systems that quietly decide how a lot of lives go. I would like to spend my time building things that make those systems kinder, and that give people a reason to feel hopeful. <span class="ph">[ add the story behind that - fill in ]</span></p>
+      </div>
+      <figure class="about__print reveal" style="--d:2">
+        <div class="print__sheet print__sheet--small">
+          <span class="tape tape--a" aria-hidden="true"></span>
+          <div class="print__photo">
+            <picture>
+              <source type="image/avif" srcset="assets/img/matt-portrait-480.avif 480w, assets/img/matt-portrait-720.avif 720w" sizes="(min-width: 900px) 320px, 70vw">
+              <source type="image/webp" srcset="assets/img/matt-portrait-480.webp 480w, assets/img/matt-portrait-720.webp 720w" sizes="(min-width: 900px) 320px, 70vw">
+              <img src="assets/img/matt-portrait-480.jpg" srcset="assets/img/matt-portrait-480.jpg 480w, assets/img/matt-portrait-720.jpg 720w" sizes="(min-width: 900px) 320px, 70vw" width="720" height="900" loading="lazy" decoding="async" alt="Close crop of Matt on the window ledge, looking out at the skyline">
+            </picture>
+          </div>
+          <figcaption class="print__caption"><span class="ph">[ a caption, or a different photo ]</span></figcaption>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============================================================ CONTACT -->
+  <section class="contact section" id="contact" aria-labelledby="contact-title">
+    <div class="wrap contact__grid">
+      <div class="contact__stage" aria-hidden="true"><svg class="scene" data-scene="wave" focusable="false"></svg></div>
+      <div class="contact__body">
+        <p class="mono reveal">05 <span aria-hidden="true">/</span> contact</p>
+        <h2 class="contact__title reveal" id="contact-title" style="--d:1">Let's talk.</h2>
+        <p class="contact__lede reveal" style="--d:2">If something here sparked an idea, if you are building something that gives people hope, or if you just want to talk soccer, I would like to hear from you.</p>
+        <a class="contact__mail reveal" style="--d:3" href="mailto:matthewcross2003@gmail.com">matthewcross2003@gmail.com<svg class="contact__underline" viewBox="0 0 400 20" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg></a>
+        <ul class="contact__links reveal" style="--d:4">
+          <li><a class="btn btn--ghost" href="https://github.com/matthewcross27" target="_blank" rel="noopener"><span>GitHub</span><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 14 L14 6 M7.5 5.5 H14.5 V12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="visually-hidden"> (opens in a new tab)</span></a></li>
+          <li><a class="btn btn--ghost" href="https://www.linkedin.com/in/mcross27" target="_blank" rel="noopener"><span>LinkedIn</span><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 14 L14 6 M7.5 5.5 H14.5 V12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="visually-hidden"> (opens in a new tab)</span></a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"
-        integrity="sha384-g4NTh/Iv5PPU4xPyhEWqPcwtNXOvdaDI8LLnyYfyNZOjKJeYQyjzQ9X5275eBjpt"
-        crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"
-        integrity="sha384-Z3REaz79l2IaAZqJsSABtTbhjgOUYyV3p90XNnAPCSHg3EMTz1fouunq9WZRtj3d"
-        crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.min.js" integrity="sha384-rvEjR85HduidawDBR0uRyGb+TbNBzSPDPOYWWom7LyPTmZXv2OztrBvPBvmn17XN" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/bundles/anime.umd.min.js"
-        integrity="sha384-InMmvD3VoYcY7hGjSC80aLb2bNNE4CzpX+Eq6FVDlmB0IKgDvmfPw4UY8L/M++iG"
-        crossorigin="anonymous"></script>
-<script src="scrub-vignette.js"></script>
-<script src="main.js"></script>
+<footer class="foot">
+  <div class="wrap foot__row mono mono--soft">
+    <span>&copy; 2026 Matt Cross</span>
+    <span>drawn in pencil, set in Instrument Serif</span>
+    <a href="#top">back to top</a>
+  </div>
+</footer>
+
+<script src="js/sketch.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/doodles.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>

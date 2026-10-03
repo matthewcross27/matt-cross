@@ -1,0 +1,31 @@
+# Placeholders to fill in
+
+Every placeholder on the site is a `<span class="ph">[ ... ]</span>` in `index.html` (search for `class="ph"`).
+
+**Now**
+- `[ last updated: fill in ]`
+- `[ one or two sentences on what you're reading, learning or thinking about this season - fill in ]`
+
+**Work / BountifulCSAs** (real: name, one-liner, capability list, status "Building", GitHub link)
+- `[ screenshot of the platform - add when ready ]`
+- `[ why this matters to you and to the farms - fill in ]`
+- `[ your role - fill in ]`
+- `[ outcomes, numbers, quotes - fill in ]`
+
+**Work / stubs 02-04** (each): `[ status ]`, `[ Project name ]`, `[ one line: what it is ]`, `[ why it matters, in a sentence ]`, `[ link ]`
+
+**Interests** (soccer, basketball, guitar)
+- `[ your soccer story: how long you've played, position, the team you'd die for - fill in ]`
+- `[ your basketball story: pickup runs, a shot you're proud of, who you play with - fill in ]`
+- `[ your guitar story: what you play, who taught you, a song you keep coming back to - fill in ]`
+- `[ the lines above are draft copy - rewrite them in your own words ]`
+- The three lesson paragraphs and headlines under each scene are DRAFT copy written by the builder
+  (not placeholders in brackets, but meant to be rewritten in Matt's own voice).
+
+**About**
+- `[ where you're based, what you do day to day, how you got here - fill in ]`
+- `[ add the story behind that - fill in ]`
+- `[ a caption, or a different photo ]`
+- The second About paragraph and the Contact paragraph are draft copy in the same spirit as the hero.
+
+**Hero marks** (draft, editable in `index.html`): "a lot of systems down there", "soccer, always", "window seat, mid-thought".
