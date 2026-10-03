@@ -25,16 +25,17 @@
   function skyline(svg) {
     clear(svg);
     var pen = S.Pen(61), r = S.rng(8), base = 226, g = s('g', null, svg);
-    var x = -10, pts = [];
+    var x = -10;
     function seg(x1, y1, x2, y2, w, op) {
       var gr = pen.line(g, x1, y1, x2, y2, { w: w || 2, op: op == null ? 0.7 : op, amp: 1.2, ghost: true });
       gr.querySelectorAll('path').forEach(function (p) { p.setAttribute('data-x', (Math.max(0, x1) / 1600).toFixed(3)); });
     }
-    var towers = { 7: 'tank', 12: 'empire', 19: 'tank', 24: 'spire', 31: 'tank' }, k = 0;
-    var prevTop = base;
+    var landmarks = [[470, 'tank'], [840, 'empire'], [1010, 'tank'], [1250, 'spire'], [1470, 'tank']], li = 0, prevTop = base;
     while (x < 1620) {
-      var w = 34 + r() * 56, h = 36 + r() * 78;
-      var kind = towers[k] || '';
+      /* low-rise on the left so the headline and buttons stay clear; the city rises toward the photo */
+      var w = 34 + r() * 56, h = x < 760 ? 22 + r() * 36 : 36 + r() * 78;
+      var kind = '';
+      if (li < landmarks.length && x >= landmarks[li][0]) { kind = landmarks[li][1]; li++; }
       if (kind === 'spire') { w = 58; h = 186; }
       if (kind === 'empire') { w = 74; h = 142; }
       var top = base - h;
@@ -61,7 +62,7 @@
         if (r() < 0.55) seg(x + 8, top + rr * 22, x + w - 8 - r() * 14, top + rr * 22, 1, 0.22);
       }
       prevTop = top;
-      x += w; k++;
+      x += w;
     }
     seg(x, prevTop, x, base, 2);
     seg(-10, base, 1620, base, 2.4, 0.8);
