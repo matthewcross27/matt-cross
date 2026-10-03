@@ -28,7 +28,7 @@ Every placeholder on the site is a `<span class="ph">[ ... ]</span>` in `index.h
 - `[ a caption, or a different photo ]`
 - The second About paragraph and the Contact paragraph are draft copy in the same spirit as the hero.
 
-**Hero marks** (draft, editable in `index.html`): the handwritten note "a lot of systems down there" on the photo. The "soccer, always" note, its arrow and the "window seat, mid-thought" caption were removed; the red ring around the shirt number stays as a wordless mark.
+**Hero marks** (draft, editable in `index.html`): the handwritten note "a lot of systems down there" on the photo. The "soccer, always" note, its arrow, the "window seat, mid-thought" caption and the red ring around the shirt number were removed.
 
 **Other captions of the same kind (kept, flagged for review):** "thanks for stopping by" (the goodbye wave figure by the contact section), and the About photo caption placeholder `[ a caption, or a different photo ]`.
 

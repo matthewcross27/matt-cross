@@ -18,8 +18,7 @@ Nothing here is copied: no layouts, copy or distinctive assets.
 
 What this became:
 
-- **Hero**: the photo is a print taped into the sketchbook page, with pencil annotations, a red-pen ring on the shirt
-  number, and a sketched Matt perched on its edge doing a one-time wave and settling into the photo's pose. A sketched
+- **Hero**: the photo is a print taped into the sketchbook page, with a pencil annotation, and a sketched Matt perched on its edge doing a one-time wave and settling into the photo's pose. A sketched
   skyline draws itself across the bottom of the page like a continuation of the view out of the window. The photo's
   sky blue becomes the page's single accent colour; the England shirt supplies the second (red), used sparingly.
 - **Type**: Instrument Serif for the name and headlines (editorial, a little theatrical), Newsreader for reading,
