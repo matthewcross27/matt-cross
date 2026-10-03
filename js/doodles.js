@@ -74,9 +74,7 @@
     clear(svg);
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     var pen = S.Pen(19);
-    var ring = map.ring, c = [ring[0] * W, ring[1] * H];
     var g = s('g', { 'class': 'marks' }, svg);
-    pen.ellipse(g, c[0], c[1], map.ringR[0] * W, map.ringR[1] * H, { w: 2.6, color: RED, amp: 1.4, overshoot: true });
     /* arrow: sky note -> skyline */
     var b = map.skyArrow, bp = b.map(function (q) { return [q[0] * W, q[1] * H]; });
     pen.curve(g, bp, { w: 2.4, color: NAVY, amp: 1, ghost: false });

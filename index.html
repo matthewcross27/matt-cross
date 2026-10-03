@@ -15,7 +15,7 @@
   <link rel="preload" href="assets/fonts/instrument-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/newsreader-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/dm-mono-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -99,7 +99,7 @@
           <span class="ph">[ one or two sentences on what you're reading, learning or thinking about this season - fill in ]</span>
         </p>
       </div>
-      <svg class="now__doodle doodle" viewBox="0 0 160 200" aria-hidden="true" focusable="false"></svg>
+      <svg class="now__doodle doodle reveal" viewBox="0 0 160 200" aria-hidden="true" focusable="false"></svg>
     </div>
   </section>
 
@@ -281,9 +281,11 @@
   </div>
 </footer>
 
-<script src="js/sketch.js"></script>
-<script src="js/scenes.js"></script>
-<script src="js/doodles.js"></script>
-<script src="js/main.js"></script>
+<!-- Bump ?v= on all four scripts and the stylesheet whenever any of them changes. Static hosts let browsers
+     cache these for minutes to days, and mixing an old script with newer HTML is how a page goes blank. -->
+<script src="js/sketch.js?v=4"></script>
+<script src="js/scenes.js?v=4"></script>
+<script src="js/doodles.js?v=4"></script>
+<script src="js/main.js?v=4"></script>
 </body>
 </html>

@@ -78,13 +78,15 @@ a { color: inherit; }
 .section__intro { font-size: clamp(1.1rem, 1.3vw + 0.7rem, 1.4rem); color: var(--ink-2); max-width: 36em; }
 .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: clamp(16px, 2.4vw, 32px); }
 
-/* ---------- reveal: one entrance for everything that scrolls in ---------- */
-.js .reveal { opacity: 0; translate: 0 18px; transition: opacity var(--t-slow) var(--ease-out) calc(var(--d, 0) * 90ms), translate var(--t-slow) var(--ease-out) calc(var(--d, 0) * 90ms); }
-.js .reveal.is-in { opacity: 1; translate: 0 0; }
+/* ---------- reveal: one entrance for everything that scrolls in ----------
+   Hidden ONLY under .js-reveal, a class main.js adds after the observer is live. No JS, a failed script,
+   or a stale cached script against newer HTML all leave every .reveal element plainly visible. */
+.js-reveal .reveal { opacity: 0; translate: 0 18px; transition: opacity var(--t-slow) var(--ease-out) calc(var(--d, 0) * 90ms), translate var(--t-slow) var(--ease-out) calc(var(--d, 0) * 90ms); }
+.js-reveal .reveal.is-in { opacity: 1; translate: 0 0; }
 
 /* pencil strokes that draw themselves on (paths get .dr + --i from doodles.js) */
 @keyframes draw { from { stroke-dasharray: 1 2; stroke-dashoffset: 1.1; } to { stroke-dasharray: 1 2; stroke-dashoffset: 0; } }
-.js .reveal:not(.is-in) .dr { stroke-dasharray: 1 2; stroke-dashoffset: 1.1; }
+.js-reveal .reveal:not(.is-in) .dr { stroke-dasharray: 1 2; stroke-dashoffset: 1.1; }
 .reveal.is-in .dr { animation: draw 1.15s var(--ease-out) calc(var(--i, 0) * 1100ms + 160ms) backwards; }
 
 /* ---------- header ---------- */
@@ -347,6 +349,6 @@ html:not(.js) .note { display: none; }
 /* ============================================================ REDUCED MOTION */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-  .js .reveal { opacity: 1; translate: none; }
+  .js-reveal .reveal { opacity: 1; translate: none; }
   .dr { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
 }
